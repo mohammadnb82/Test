@@ -1,4 +1,4 @@
-name: God Mode Python Controller
+name: Test Site Python Controller
 
 on:
   push:
@@ -25,7 +25,7 @@ jobs:
         with:
           python-version: '3.10'
 
-      # ۳. نصب ابزارهای قدرت (Selenium, Chrome, Requests)
+      # ۳. نصب ابزارهای مورد نیاز (Selenium, Chrome, Requests)
       - name: Install System & Python Dependencies
         run: |
           sudo apt-get update
@@ -33,8 +33,8 @@ jobs:
           pip install --upgrade pip
           pip install selenium webdriver-manager requests beautifulsoup4 lxml
 
-      # ۴. اجرای فرمانده اصلی (ساخت ابزارها)
-      - name: Run Python Commander (builder.py)
+      # ۴. اجرای اسکریپت اصلی (اصلاح شده بر اساس فایل setup.py شما)
+      - name: Run Python Script (setup.py)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PERSONAL_TOKEN: ${{ secrets.PERSONAL_TOKEN }}
@@ -42,16 +42,16 @@ jobs:
           WHATSAPP_TOKEN: ${{ secrets.WHATSAPP_TOKEN }}
           INSTAGRAM_TOKEN: ${{ secrets.INSTAGRAM_TOKEN }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-        run: python builder.py
+        run: python setup.py
 
-      # ۵. >>> بخش جدید: ذخیره فایل‌های ساخته شده در کد اصلی <<<
-      # این همان چیزی است که باعث می‌شود پوشه tools پر شود
+      # ۵. ذخیره فایل‌های تولید شده در پوشه tools به شاخه اصلی
+      # نکته: فرض بر این است که فایل setup.py شما خروجی را در پوشه tools ذخیره می‌کند
       - name: Save Generated Tools to Main Branch
         run: |
-          git config --global user.name "God Mode Bot"
-          git config --global user.email "bot@smart-tools.com"
-          git add tools/
-          git commit -m "🏗️ Auto-generated tools added to repo" || echo "No changes to commit"
+          git config --global user.name "Test Site Bot"
+          git config --global user.email "bot@test-site.com"
+          git add tools/ || echo "No tools directory found to add"
+          git commit -m "🏗️ Auto-generated content added to repo" || echo "No changes to commit"
           git push origin HEAD:main
 
       # ۶. انتشار نهایی در گیت‌هاب پیج
@@ -61,4 +61,3 @@ jobs:
           folder: .
           clean: true
           branch: gh-pages
-
