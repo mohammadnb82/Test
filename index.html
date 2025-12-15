@@ -1,8 +1,4 @@
-import os
 
-def create_homepage():
-    # محتوای HTML صفحه اصلی با ۴ دکمه و استایل زیبا
-    html_content = """
     <!DOCTYPE html>
     <html lang="fa" dir="rtl">
     <head>
@@ -73,31 +69,4 @@ def create_homepage():
 
     </body>
     </html>
-    """
-
-    # ایجاد و ذخیره فایل index.html
-    with open("index.html", "w", encoding="utf-8") as f:
-        f.write(html_content)
-    print("✅ صفحه اصلی (index.html) با ۴ دکمه ساخته شد.")
-
-def ensure_tools_folder():
-    # ساخت پوشه tools و فایل keep برای جلوگیری از حذف
-    folder_name = "tools"
-    keep_file = ".keep"
-    file_path = os.path.join(folder_name, keep_file)
-
-    if not os.path.exists(folder_name):
-        os.makedirs(folder_name)
     
-    if not os.path.exists(file_path):
-        with open(file_path, 'w') as f:
-            pass 
-
-if __name__ == "__main__":
-    # ۱. اطمینان از وجود پوشه tools
-    ensure_tools_folder()
-    
-    # ۲. ساختن صفحه اصلی با دکمه‌ها
-    create_homepage()
-    
-    print("🚀 تمام عملیات با موفقیت انجام شد.")
