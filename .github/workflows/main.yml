@@ -1,1 +1,64 @@
+name: God Mode Python Controller
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write      # اجازه نوشتن و حذف فایل‌ها
+  pages: write         # اجازه انتشار سایت
+  id-token: write      # اجازه احراز هویت امن
+
+jobs:
+  ultimate-execution:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # ۱. دانلود کل فایل‌های پروژه
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # ۲. آماده‌سازی محیط پایتون
+      - name: Setup Python Environment
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      # ۳. نصب ابزارهای قدرت (Selenium, Chrome, Requests)
+      - name: Install System & Python Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable unzip
+          pip install --upgrade pip
+          pip install selenium webdriver-manager requests beautifulsoup4 lxml
+
+      # ۴. اجرای فرمانده اصلی (ساخت ابزارها)
+      - name: Run Python Commander (builder.py)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PERSONAL_TOKEN: ${{ secrets.PERSONAL_TOKEN }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          WHATSAPP_TOKEN: ${{ secrets.WHATSAPP_TOKEN }}
+          INSTAGRAM_TOKEN: ${{ secrets.INSTAGRAM_TOKEN }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+        run: python builder.py
+
+      # ۵. >>> بخش جدید: ذخیره فایل‌های ساخته شده در کد اصلی <<<
+      # این همان چیزی است که باعث می‌شود پوشه tools پر شود
+      - name: Save Generated Tools to Main Branch
+        run: |
+          git config --global user.name "God Mode Bot"
+          git config --global user.email "bot@smart-tools.com"
+          git add tools/
+          git commit -m "🏗️ Auto-generated tools added to repo" || echo "No changes to commit"
+          git push origin HEAD:main
+
+      # ۶. انتشار نهایی در گیت‌هاب پیج
+      - name: Deploy Result to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: .
+          clean: true
+          branch: gh-pages
 
