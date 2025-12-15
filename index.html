@@ -1,72 +1,37 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>هوش مصنوعی موبایل - بدون سرور</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔮 استودیو هوشمند وب</h1>
+            <p>اجرای کامل روی موبایل شما (بدون ارسال به سرور)</p>
+        </header>
 
-    <!DOCTYPE html>
-    <html lang="fa" dir="rtl">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>سایت تست - کنترل پنل</title>
-        <style>
-            body {
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                background-color: #f4f4f9;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                height: 100vh;
-                margin: 0;
-            }
-            h1 {
-                color: #333;
-                margin-bottom: 30px;
-            }
-            .button-container {
-                display: grid;
-                grid-template-columns: 1fr 1fr; /* دو ستون */
-                gap: 20px;
-            }
-            .btn {
-                background-color: #4CAF50; /* رنگ سبز */
-                border: none;
-                color: white;
-                padding: 20px 40px;
-                text-align: center;
-                text-decoration: none;
-                display: inline-block;
-                font-size: 18px;
-                margin: 4px 2px;
-                cursor: pointer;
-                border-radius: 12px;
-                transition: background-color 0.3s, transform 0.2s;
-                width: 200px;
-            }
-            .btn:hover {
-                background-color: #45a049;
-                transform: scale(1.05); /* کمی بزرگنمایی هنگام موس */
-            }
-            .btn-blue { background-color: #008CBA; }
-            .btn-red { background-color: #f44336; }
-            .btn-orange { background-color: #ff9800; }
-        </style>
-    </head>
-    <body>
-
-        <h1>کنترل پنل سایت Test</h1>
-
-        <div class="button-container">
-            <!-- دکمه اول -->
-            <button class="btn" onclick="alert('دکمه ۱ کلیک شد!')">دکمه شماره ۱</button>
+        <div class="card-grid">
+            <div class="card">
+                <div class="icon">👤</div>
+                <h2>تشخیص چهره</h2>
+                <p>تشخیص صورت و نقاط کلیدی مستقیماً در مرورگر.</p>
+                <a href="face.html" class="btn btn-primary">شروع ابزار چهره</a>
+            </div>
             
-            <!-- دکمه دوم -->
-            <button class="btn btn-blue" onclick="alert('دکمه ۲ کلیک شد!')">دکمه شماره ۲</button>
-            
-            <!-- دکمه سوم -->
-            <button class="btn btn-red" onclick="alert('دکمه ۳ کلیک شد!')">دکمه شماره ۳</button>
-            
-            <!-- دکمه چهارم -->
-            <button class="btn btn-orange" onclick="alert('دکمه ۴ کلیک شد!')">دکمه شماره ۴</button>
+            <div class="card">
+                <div class="icon">🎵</div>
+                <h2>پردازش صدا</h2>
+                <p>افزایش باس و شفافیت صدا با Web Audio API.</p>
+                <a href="audio.html" class="btn btn-secondary">شروع ابزار صدا</a>
+            </div>
         </div>
-
-    </body>
-    </html>
-    
+        
+        <footer>
+            <p>نسخه: Client-Side v2.0 | طراحی شده برای سایت Test</p>
+        </footer>
+    </div>
+</body>
+</html>
