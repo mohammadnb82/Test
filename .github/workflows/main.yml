@@ -1,14 +1,15 @@
-name: Test Site Python Controller
+name: Full Power Test Controller
 
 on:
   push:
     branches: [ "main" ]
   workflow_dispatch:
 
+# --- بخش حیاتی: اعطای دسترسی کامل به ربات خودکار ---
 permissions:
-  contents: write      # اجازه نوشتن و حذف فایل‌ها
+  contents: write      # اجازه کامل برای خواندن، نوشتن، تغییر و حذف فایل‌ها در مخزن
   pages: write         # اجازه انتشار سایت
-  id-token: write      # اجازه احراز هویت امن
+  id-token: write      # اجازه امنیتی استاندارد
 
 jobs:
   ultimate-execution:
@@ -18,6 +19,8 @@ jobs:
       # ۱. دانلود کل فایل‌های پروژه
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # دانلود کامل تاریخچه برای اطمینان از عملکرد صحیح گیت
 
       # ۲. آماده‌سازی محیط پایتون
       - name: Setup Python Environment
@@ -25,39 +28,40 @@ jobs:
         with:
           python-version: '3.10'
 
-      # ۳. نصب ابزارهای مورد نیاز (Selenium, Chrome, Requests)
+      # ۳. نصب پکیج‌ها و ابزارها (دانلود و آپلود پکیج‌ها)
       - name: Install System & Python Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable unzip
           pip install --upgrade pip
           pip install selenium webdriver-manager requests beautifulsoup4 lxml
+          # اگر فایل requirements.txt دارید، خط زیر را از کامنت خارج کنید:
+          # pip install -r requirements.txt
 
-      # ۴. اجرای اسکریپت اصلی (اصلاح شده بر اساس فایل setup.py شما)
+      # ۴. اجرای اسکریپت پایتون با دسترسی به محیط
+      # فایل setup.py اکنون می‌تواند هر فایلی را بخواند، بنویسد یا پاک کند
       - name: Run Python Script (setup.py)
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PERSONAL_TOKEN: ${{ secrets.PERSONAL_TOKEN }}
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          WHATSAPP_TOKEN: ${{ secrets.WHATSAPP_TOKEN }}
-          INSTAGRAM_TOKEN: ${{ secrets.INSTAGRAM_TOKEN }}
-          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # توکن خودکار برای دسترسی‌های احتمالی داخل اسکریپت
         run: python setup.py
 
-      # ۵. ذخیره فایل‌های تولید شده در پوشه tools به شاخه اصلی
-      # نکته: فرض بر این است که فایل setup.py شما خروجی را در پوشه tools ذخیره می‌کند
-      - name: Save Generated Tools to Main Branch
+      # ۵. ذخیره تمام تغییرات (حذفیات، اضافات و ویرایش‌ها)
+      - name: Commit and Push All Changes
         run: |
-          git config --global user.name "Test Site Bot"
-          git config --global user.email "bot@test-site.com"
-          git add tools/ || echo "No tools directory found to add"
-          git commit -m "🏗️ Auto-generated content added to repo" || echo "No changes to commit"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # دستور زیر (-A) یعنی: تمام فایل‌های جدید، تغییر یافته و حذف شده را به لیست اضافه کن
+          git add -A
+          
+          # اگر تغییری وجود داشت، کامیت کن و بفرست
+          git commit -m "🤖 Auto-update: Applied changes from setup.py" || echo "No changes found to commit"
           git push origin HEAD:main
 
       # ۶. انتشار نهایی در گیت‌هاب پیج
       - name: Deploy Result to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: .
+          folder: .    # انتشار کل محتویات تغییر یافته
           clean: true
           branch: gh-pages
