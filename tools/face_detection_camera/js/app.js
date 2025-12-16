@@ -8,7 +8,6 @@ let audioContext;
 let lastAlarmTime = 0;
 const ALARM_COOLDOWN = 1000;
 
-// بارگذاری تصاویر
 function loadSavedItems() {
     const saved = localStorage.getItem('detectedItems');
     if (saved) {
@@ -247,35 +246,42 @@ function updateItemsDisplay() {
     });
 }
 
-// شروع دوربین با مدیریت خطا بهتر
 async function startCamera() {
     try {
         document.getElementById('status').textContent = 'درخواست دسترسی...';
         document.getElementById('status').style.background = '#FF9800';
         
-        // چک کردن پشتیبانی مرورگر
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        // بررسی پشتیبانی مرورگر
+        if (!navigator.mediaDevices?.getUserMedia) {
             throw new Error('مرورگر شما از دوربین پشتیبانی نمی‌کند');
         }
         
-        // درخواست دسترسی به دوربین
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { 
+        // تنظیمات دوربین برای Safari iOS
+        const constraints = {
+            video: {
                 facingMode: 'environment',
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
+                width: { ideal: 1280, max: 1920 },
+                height: { ideal: 720, max: 1080 }
             },
             audio: false
-        });
+        };
+        
+        // درخواست دسترسی
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
         
         video.srcObject = stream;
+        video.setAttribute('playsinline', 'true'); // مهم برای iOS
+        video.setAttribute('autoplay', 'true');
         
-        await new Promise((resolve) => {
+        // صبر برای بارگذاری ویدیو
+        await new Promise((resolve, reject) => {
             video.onloadedmetadata = () => {
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
                 resolve();
             };
+            
+            setTimeout(() => reject(new Error('Timeout')), 10000);
         });
         
         await video.play();
@@ -302,22 +308,35 @@ async function startCamera() {
     } catch (error) {
         console.error('خطا:', error);
         
-        let errorMessage = 'خطا در دسترسی به دوربین';
+        let errorMessage = '';
+        let helpText = '';
         
         if (error.name === 'NotAllowedError') {
-            errorMessage = 'لطفاً دسترسی به دوربین را تایید کنید';
+            errorMessage = '❌ دسترسی رد شد';
+            helpText = 'لطفاً در تنظیمات Safari:\n1. تنظیمات > Safari > دوربین > اجازه\n2. دکمه "شروع" را دوباره بزنید';
         } else if (error.name === 'NotFoundError') {
-            errorMessage = 'دوربینی یافت نشد';
+            errorMessage = '❌ دوربین پیدا نشد';
+            helpText = 'لطفاً مطمئن شوید دستگاه دوربین دارد';
         } else if (error.name === 'NotReadableError') {
-            errorMessage = 'دوربین در حال استفاده است';
-        } else if (error.message) {
-            errorMessage = error.message;
+            errorMessage = '❌ دوربین در حال استفاده';
+            helpText = 'دوربین توسط برنامه دیگری استفاده می‌شود';
+        } else if (error.message === 'Timeout') {
+            errorMessage = '❌ تایم‌اوت';
+            helpText = 'اتصال خیلی کند است. دوباره امتحان کنید';
+        } else {
+            errorMessage = '❌ خطای ناشناخته';
+            helpText = 'لطفاً مرورگر Chrome را امتحان کنید\nیا از HTTPS استفاده کنید';
         }
         
-        alert('⚠️ ' + errorMessage + '\n\nتوجه: این برنامه فقط با HTTPS کار می‌کند.\nلطفاً از مرورگر Chrome یا Safari استفاده کنید.');
+        alert(errorMessage + '\n\n' + helpText);
         
-        document.getElementById('status').textContent = '❌ ' + errorMessage;
+        document.getElementById('status').textContent = errorMessage;
         document.getElementById('status').style.background = '#f44336';
+        
+        // آزاد کردن منابع
+        if (video.srcObject) {
+            video.srcObject.getTracks().forEach(track => track.stop());
+        }
     }
 }
 
@@ -423,9 +442,13 @@ window.addEventListener('load', () => {
     canvas = document.getElementById('canvas');
     ctx = canvas.getContext('2d');
     
-    // چک کردن HTTPS
-    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
-        alert('⚠️ هشدار: این برنامه نیاز به HTTPS دارد.\n\nلطفاً به آدرس زیر بروید:\nhttps://' + window.location.host + window.location.pathname);
+    // بررسی HTTPS
+    const isSecure = window.location.protocol === 'https:' || 
+                     window.location.hostname === 'localhost' || 
+                     window.location.hostname === '127.0.0.1';
+    
+    if (!isSecure) {
+        alert('⚠️ این برنامه فقط با HTTPS کار می‌کند');
         document.getElementById('status').textContent = '❌ نیاز به HTTPS';
         document.getElementById('status').style.background = '#f44336';
         document.getElementById('startBtn').disabled = true;
@@ -450,16 +473,13 @@ window.addEventListener('load', () => {
         saveEnabled = e.target.checked;
         if (saveEnabled) {
             saveItems();
-            console.log('✅ ذخیره فعال');
         } else {
             sessionStorage.setItem('tempItems', JSON.stringify(detectedItems));
-            console.log('⚠️ ذخیره غیرفعال');
         }
     });
     
     document.getElementById('alarmToggle').addEventListener('change', (e) => {
         alarmEnabled = e.target.checked;
-        console.log(alarmEnabled ? '🔔 آژیر فعال' : '🔕 آژیر غیرفعال');
     });
     
     window.addEventListener('beforeunload', () => {
