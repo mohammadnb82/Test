@@ -3,349 +3,7 @@ import os
 # مسیر پروژه
 project_root = "tools/face_detection_camera"
 
-# ایجاد ساختار پوشه‌ها
-folders = [
-    "tools",
-    f"{project_root}",
-    f"{project_root}/css",
-    f"{project_root}/js",
-]
-
-for folder in folders:
-    os.makedirs(folder, exist_ok=True)
-
-# فایل .keep
-with open("tools/.keep", "w", encoding="utf-8") as f:
-    f.write("")
-
-# محتوای HTML به‌روزرسانی شده
-html_content = """<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>دوربین نگهبان تشخیص چهره و بدن</title>
-    <link rel="stylesheet" href="css/style.css">
-</head>
-<body>
-    <div class="container">
-        <header>
-            <h1>🎥 دوربین نگهبان تشخیص چهره و بدن</h1>
-            <div class="status" id="status">آماده</div>
-        </header>
-
-        <div class="controls">
-            <button id="startBtn" class="btn btn-primary">▶️ شروع دوربین</button>
-            <button id="stopBtn" class="btn btn-danger" disabled>⏹️ توقف دوربین</button>
-            <button id="clearBtn" class="btn btn-warning">🗑️ پاک کردن تصاویر</button>
-            
-            <div class="toggle-controls">
-                <label class="toggle-switch">
-                    <input type="checkbox" id="saveToggle">
-                    <span class="toggle-slider"></span>
-                    <span class="toggle-label">💾 ذخیره تصاویر</span>
-                </label>
-                
-                <label class="toggle-switch">
-                    <input type="checkbox" id="alarmToggle">
-                    <span class="toggle-slider"></span>
-                    <span class="toggle-label">🔔 صدای آژیر</span>
-                </label>
-            </div>
-        </div>
-
-        <div class="video-container">
-            <video id="video" autoplay playsinline></video>
-            <canvas id="canvas"></canvas>
-            <div class="detection-info" id="detectionInfo"></div>
-        </div>
-
-        <div class="faces-section">
-            <h2>موارد شناسایی شده</h2>
-            <div id="facesContainer" class="faces-grid"></div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet"></script>
-    <script src="js/app.js"></script>
-</body>
-</html>"""
-
-# محتوای CSS (بدون تغییر)
-css_content = """* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    min-height: 100vh;
-    padding: 20px;
-}
-
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    background: white;
-    border-radius: 20px;
-    padding: 30px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-}
-
-header {
-    text-align: center;
-    margin-bottom: 30px;
-}
-
-h1 {
-    color: #333;
-    margin-bottom: 15px;
-    font-size: 2.5em;
-}
-
-.status {
-    display: inline-block;
-    padding: 8px 20px;
-    background: #4CAF50;
-    color: white;
-    border-radius: 20px;
-    font-weight: bold;
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
-}
-
-.controls {
-    display: flex;
-    gap: 15px;
-    justify-content: center;
-    flex-wrap: wrap;
-    margin-bottom: 30px;
-}
-
-.btn {
-    padding: 12px 30px;
-    border: none;
-    border-radius: 10px;
-    font-size: 16px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.3s;
-    color: white;
-}
-
-.btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-}
-
-.btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.btn-danger {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-}
-
-.btn-warning {
-    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-}
-
-.btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
-}
-
-.toggle-controls {
-    display: flex;
-    gap: 20px;
-    align-items: center;
-    width: 100%;
-    justify-content: center;
-    margin-top: 15px;
-}
-
-.toggle-switch {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    cursor: pointer;
-    user-select: none;
-}
-
-.toggle-switch input {
-    display: none;
-}
-
-.toggle-slider {
-    position: relative;
-    width: 50px;
-    height: 26px;
-    background: #ccc;
-    border-radius: 26px;
-    transition: 0.3s;
-}
-
-.toggle-slider::before {
-    content: '';
-    position: absolute;
-    width: 22px;
-    height: 22px;
-    background: white;
-    border-radius: 50%;
-    top: 2px;
-    left: 2px;
-    transition: 0.3s;
-}
-
-.toggle-switch input:checked + .toggle-slider {
-    background: #4CAF50;
-}
-
-.toggle-switch input:checked + .toggle-slider::before {
-    transform: translateX(24px);
-}
-
-.toggle-label {
-    font-weight: bold;
-    color: #333;
-    font-size: 14px;
-}
-
-.video-container {
-    position: relative;
-    width: 100%;
-    max-width: 800px;
-    margin: 0 auto 30px;
-    border-radius: 15px;
-    overflow: hidden;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-}
-
-#video, #canvas {
-    width: 100%;
-    display: block;
-    border-radius: 15px;
-}
-
-#canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-}
-
-.detection-info {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    background: rgba(0,0,0,0.7);
-    color: white;
-    padding: 10px 15px;
-    border-radius: 10px;
-    font-weight: bold;
-    font-size: 14px;
-}
-
-.faces-section {
-    margin-top: 40px;
-}
-
-.faces-section h2 {
-    color: #333;
-    margin-bottom: 20px;
-    text-align: center;
-}
-
-.faces-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 20px;
-}
-
-.face-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 15px;
-    padding: 15px;
-    text-align: center;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-    transition: transform 0.3s;
-    animation: slideIn 0.5s;
-}
-
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.face-card:hover {
-    transform: translateY(-5px);
-}
-
-.face-card img {
-    width: 100%;
-    height: 200px;
-    object-fit: cover;
-    border-radius: 10px;
-    margin-bottom: 10px;
-    border: 3px solid white;
-}
-
-.face-card .face-id {
-    color: white;
-    font-weight: bold;
-    font-size: 14px;
-    margin-bottom: 5px;
-}
-
-.face-card .face-time {
-    color: rgba(255,255,255,0.8);
-    font-size: 12px;
-}
-
-.face-card .face-area {
-    color: rgba(255,255,255,0.9);
-    font-size: 11px;
-    margin-top: 5px;
-}
-
-@media (max-width: 768px) {
-    .container {
-        padding: 20px;
-    }
-    
-    h1 {
-        font-size: 1.8em;
-    }
-    
-    .controls {
-        flex-direction: column;
-    }
-    
-    .toggle-controls {
-        flex-direction: column;
-        gap: 15px;
-    }
-    
-    .faces-grid {
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    }
-}"""
-
-# محتوای JavaScript با تشخیص چهره و بدن
+# JavaScript اصلاح شده با مدیریت خطا
 js_content = """let video, canvas, ctx;
 let faceModel, poseModel;
 let isDetecting = false;
@@ -354,7 +12,7 @@ let saveEnabled = false;
 let alarmEnabled = false;
 let audioContext;
 let lastAlarmTime = 0;
-const ALARM_COOLDOWN = 1000; // 1 ثانیه فاصله بین آژیرها
+const ALARM_COOLDOWN = 1000;
 
 // بارگذاری تصاویر
 function loadSavedItems() {
@@ -365,14 +23,12 @@ function loadSavedItems() {
     }
 }
 
-// ذخیره تصاویر
 function saveItems() {
     if (saveEnabled) {
         localStorage.setItem('detectedItems', JSON.stringify(detectedItems));
     }
 }
 
-// پاک کردن تصاویر
 function clearItems() {
     if (confirm('آیا مطمئن هستید که می‌خواهید تمام تصاویر را پاک کنید؟')) {
         detectedItems = [];
@@ -382,7 +38,6 @@ function clearItems() {
     }
 }
 
-// ایجاد صدای آژیر
 function createAlarmSound() {
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
 }
@@ -410,14 +65,12 @@ function playAlarm() {
     oscillator.stop(audioContext.currentTime + 0.5);
 }
 
-// محاسبه فاصله
 function calculateDistance(point1, point2) {
     const dx = point1.x - point2.x;
     const dy = point1.y - point2.y;
     return Math.sqrt(dx * dx + dy * dy);
 }
 
-// بررسی شباهت
 function areItemsSimilar(item1, item2, threshold = 100) {
     if (item1.type !== item2.type) return false;
     
@@ -430,7 +83,6 @@ function areItemsSimilar(item1, item2, threshold = 100) {
     return distance < threshold && sizeRatio < 0.5;
 }
 
-// پردازش چهره
 function processFace(predictions) {
     predictions.forEach(prediction => {
         const box = {
@@ -446,10 +98,8 @@ function processFace(predictions) {
             y: box.y + box.height / 2
         };
         
-        // پخش آژیر
         playAlarm();
         
-        // کپچر عکس
         const itemCanvas = document.createElement('canvas');
         const itemCtx = itemCanvas.getContext('2d');
         
@@ -465,7 +115,6 @@ function processFace(predictions) {
         
         const itemImage = itemCanvas.toDataURL('image/jpeg', 0.8);
         
-        // یافتن آیتم مشابه
         let matchedIndex = -1;
         for (let i = 0; i < detectedItems.length; i++) {
             if (areItemsSimilar({ type: 'face', center, area }, detectedItems[i])) {
@@ -502,15 +151,13 @@ function processFace(predictions) {
     });
 }
 
-// پردازش بدن
 function processPose(poses) {
     poses.forEach(pose => {
-        if (pose.score < 0.3) return; // حداقل اطمینان
+        if (pose.score < 0.3) return;
         
         const keypoints = pose.keypoints.filter(kp => kp.score > 0.3);
-        if (keypoints.length < 3) return; // حداقل 3 نقطه برای تشخیص بدن
+        if (keypoints.length < 3) return;
         
-        // محاسبه کادر محدوده بدن
         const xs = keypoints.map(kp => kp.position.x);
         const ys = keypoints.map(kp => kp.position.y);
         const minX = Math.min(...xs);
@@ -531,10 +178,8 @@ function processPose(poses) {
             y: box.y + box.height / 2
         };
         
-        // پخش آژیر
         playAlarm();
         
-        // کپچر عکس
         const itemCanvas = document.createElement('canvas');
         const itemCtx = itemCanvas.getContext('2d');
         
@@ -550,7 +195,6 @@ function processPose(poses) {
         
         const itemImage = itemCanvas.toDataURL('image/jpeg', 0.8);
         
-        // یافتن آیتم مشابه
         let matchedIndex = -1;
         for (let i = 0; i < detectedItems.length; i++) {
             if (areItemsSimilar({ type: 'body', center, area }, detectedItems[i])) {
@@ -587,7 +231,6 @@ function processPose(poses) {
     });
 }
 
-// نمایش تصاویر
 function updateItemsDisplay() {
     const container = document.getElementById('facesContainer');
     container.innerHTML = '';
@@ -595,9 +238,11 @@ function updateItemsDisplay() {
     detectedItems.forEach((item, index) => {
         const icon = item.type === 'face' ? '👤' : '🚶';
         const label = item.type === 'face' ? 'چهره' : 'بدن';
+        const bgColor = item.type === 'face' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)';
         
         const card = document.createElement('div');
         card.className = 'face-card';
+        card.style.background = bgColor;
         card.innerHTML = `
             <img src="${item.image}" alt="${label} ${index + 1}">
             <div class="face-id">${icon} ${label} شماره ${index + 1}</div>
@@ -608,26 +253,40 @@ function updateItemsDisplay() {
     });
 }
 
-// شروع دوربین
+// شروع دوربین با مدیریت خطا بهتر
 async function startCamera() {
     try {
+        document.getElementById('status').textContent = 'درخواست دسترسی...';
+        document.getElementById('status').style.background = '#FF9800';
+        
+        // چک کردن پشتیبانی مرورگر
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error('مرورگر شما از دوربین پشتیبانی نمی‌کند');
+        }
+        
+        // درخواست دسترسی به دوربین
         const stream = await navigator.mediaDevices.getUserMedia({ 
             video: { 
                 facingMode: 'environment',
                 width: { ideal: 1280 },
                 height: { ideal: 720 }
-            } 
+            },
+            audio: false
         });
         
         video.srcObject = stream;
         
-        video.onloadedmetadata = () => {
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-        };
+        await new Promise((resolve) => {
+            video.onloadedmetadata = () => {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                resolve();
+            };
+        });
         
-        document.getElementById('status').textContent = 'در حال بارگذاری مدل‌ها...';
-        document.getElementById('status').style.background = '#FF9800';
+        await video.play();
+        
+        document.getElementById('status').textContent = 'بارگذاری مدل‌ها...';
         
         // بارگذاری مدل‌ها
         faceModel = await blazeface.load();
@@ -648,13 +307,26 @@ async function startCamera() {
         
     } catch (error) {
         console.error('خطا:', error);
-        alert('دسترسی به دوربین امکان‌پذیر نیست.');
-        document.getElementById('status').textContent = '❌ خطا';
+        
+        let errorMessage = 'خطا در دسترسی به دوربین';
+        
+        if (error.name === 'NotAllowedError') {
+            errorMessage = 'لطفاً دسترسی به دوربین را تایید کنید';
+        } else if (error.name === 'NotFoundError') {
+            errorMessage = 'دوربینی یافت نشد';
+        } else if (error.name === 'NotReadableError') {
+            errorMessage = 'دوربین در حال استفاده است';
+        } else if (error.message) {
+            errorMessage = error.message;
+        }
+        
+        alert('⚠️ ' + errorMessage + '\\n\\nتوجه: این برنامه فقط با HTTPS کار می‌کند.\\nلطفاً از مرورگر Chrome یا Safari استفاده کنید.');
+        
+        document.getElementById('status').textContent = '❌ ' + errorMessage;
         document.getElementById('status').style.background = '#f44336';
     }
 }
 
-// توقف دوربین
 function stopCamera() {
     isDetecting = false;
     
@@ -672,15 +344,11 @@ function stopCamera() {
     document.getElementById('detectionInfo').textContent = '';
 }
 
-// تشخیص انسان (چهره + بدن)
 async function detectHumans() {
     if (!isDetecting) return;
     
     try {
-        // تشخیص چهره
         const facePredictions = await faceModel.estimateFaces(video, false);
-        
-        // تشخیص بدن
         const pose = await poseModel.estimateSinglePose(video, {
             flipHorizontal: false
         });
@@ -689,7 +357,6 @@ async function detectHumans() {
         
         let totalDetections = 0;
         
-        // رسم چهره‌ها
         if (facePredictions.length > 0) {
             totalDetections += facePredictions.length;
             
@@ -711,14 +378,12 @@ async function detectHumans() {
             processFace(facePredictions);
         }
         
-        // رسم بدن
         if (pose.score > 0.3) {
             const keypoints = pose.keypoints.filter(kp => kp.score > 0.3);
             
             if (keypoints.length >= 3) {
                 totalDetections += 1;
                 
-                // رسم نقاط
                 keypoints.forEach(kp => {
                     ctx.beginPath();
                     ctx.arc(kp.position.x, kp.position.y, 5, 0, 2 * Math.PI);
@@ -726,7 +391,6 @@ async function detectHumans() {
                     ctx.fill();
                 });
                 
-                // رسم کادر محدوده
                 const xs = keypoints.map(kp => kp.position.x);
                 const ys = keypoints.map(kp => kp.position.y);
                 const minX = Math.min(...xs);
@@ -746,7 +410,6 @@ async function detectHumans() {
             }
         }
         
-        // به‌روزرسانی اطلاعات
         if (totalDetections > 0) {
             document.getElementById('detectionInfo').textContent = 
                 `🎯 ${totalDetections} مورد شناسایی شد`;
@@ -761,11 +424,19 @@ async function detectHumans() {
     requestAnimationFrame(detectHumans);
 }
 
-// راه‌اندازی
 window.addEventListener('load', () => {
     video = document.getElementById('video');
     canvas = document.getElementById('canvas');
     ctx = canvas.getContext('2d');
+    
+    // چک کردن HTTPS
+    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+        alert('⚠️ هشدار: این برنامه نیاز به HTTPS دارد.\\n\\nلطفاً به آدرس زیر بروید:\\nhttps://' + window.location.host + window.location.pathname);
+        document.getElementById('status').textContent = '❌ نیاز به HTTPS';
+        document.getElementById('status').style.background = '#f44336';
+        document.getElementById('startBtn').disabled = true;
+        return;
+    }
     
     createAlarmSound();
     
@@ -804,49 +475,13 @@ window.addEventListener('load', () => {
     });
 });"""
 
-# ذخیره فایل‌ها
-with open(f"{project_root}/index.html", "w", encoding="utf-8") as f:
-    f.write(html_content)
-
-with open(f"{project_root}/css/style.css", "w", encoding="utf-8") as f:
-    f.write(css_content)
-
+# ذخیره فایل JavaScript جدید
 with open(f"{project_root}/js/app.js", "w", encoding="utf-8") as f:
     f.write(js_content)
 
-# README به‌روزرسانی شده
-readme_content = """# 🎥 دوربین نگهبان تشخیص چهره و بدن
-
-## ویژگی‌های جدید:
-- ✅ تشخیص خودکار **چهره** با BlazeFace
-- ✅ تشخیص خودکار **بدن** با PoseNet
-- ✅ آژیر هشدار برای **چهره یا بدن**
-- ✅ ذخیره هوشمند تصاویر
-- ✅ قابلیت فعال/غیرفعال کردن ذخیره و آژیر
-- ✅ کاملاً محلی و آفلاین
-
-## نحوه کار:
-1. دوربین هم چهره و هم بدن را تشخیص می‌دهد
-2. به محض دیدن **هر کدام**، آژیر می‌زند (اگر فعال باشد)
-3. تصویر را ذخیره می‌کند (اگر فعال باشد)
-4. فقط تصاویر با جزئیات بیشتر ذخیره می‌شوند
-
-## رنگ‌ها:
-- 🟢 سبز = چهره
-- 🟠 نارنجی = بدن
-
-## استفاده:
-1. دکمه "شروع دوربین" را بزنید
-2. به دوربین اجازه دهید
-3. دوربین به طور خودکار کار می‌کند
-"""
-
-with open(f"{project_root}/README.md", "w", encoding="utf-8") as f:
-    f.write(readme_content)
-
-print("✅ پروژه با تشخیص چهره و بدن آماده شد!")
-print(f"🌐 آدرس: https://mohammadnb82.github.io/Test/tools/face_detection_camera/")
-print("\n🎯 قابلیت‌های جدید:")
-print("  - 👤 تشخیص چهره (سبز)")
-print("  - 🚶 تشخیص بدن (نارنجی)")
-print("  - 🔔 آژیر برای هر دو")
+print("✅ کد اصلاح شد!")
+print("\n📱 راهنمای رفع خطا:")
+print("1. GitHub Pages باید HTTPS فعال باشد")
+print("2. در مرورگر Safari یا Chrome موبایل باز کنید")
+print("3. وقتی دکمه 'شروع دوربین' را بزنید، دسترسی را تایید کنید")
+print("4. اگر باز هم کار نکرد، تنظیمات مرورگر > سایت‌ها > دسترسی به دوربین را چک کنید")
