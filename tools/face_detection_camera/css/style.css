@@ -1,44 +1,49 @@
 
-body { font-family: system-ui, -apple-system, sans-serif; background: #eef2f6; margin: 0; padding: 10px; text-align: center; }
-.app-container { max-width: 600px; margin: 0 auto; background: white; border-radius: 20px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+body { font-family: system-ui, -apple-system, sans-serif; background: #e0e7ff; margin: 0; padding: 10px; text-align: center; }
+.app-container { max-width: 600px; margin: 0 auto; background: white; border-radius: 24px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
 
-h1 { margin: 10px 0 5px; font-size: 1.3rem; color: #1f2937; }
+h1 { margin: 5px 0; font-size: 1.2rem; color: #3730a3; }
 .status-waiting { color: #6b7280; font-size: 0.9rem; }
-.status-active { color: #10b981; font-weight: bold; }
-.status-loading { color: #f59e0b; font-weight: bold; }
-.status-error { color: #ef4444; font-weight: bold; }
+.status-active { color: #059669; font-weight: bold; font-size: 0.9rem; }
 
 .camera-wrapper {
     position: relative;
     width: 100%;
-    border-radius: 16px;
+    border-radius: 20px;
     overflow: hidden;
     background: #000;
-    margin: 15px 0;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    min-height: 250px; /* جلوگیری از پرش صفحه */
+    margin: 20px 0;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
-video { width: 100%; height: auto; display: block; object-fit: cover; }
-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+video, canvas { 
+    position: absolute; 
+    top: 0; 
+    left: 0;
+    width: 100%; 
+    height: 100%;
+    object-fit: cover;
+}
+/* ارتفاع ثابت برای کانتینر دوربین تا پرش نداشته باشد */
+.camera-wrapper { padding-bottom: 75%; /* نسبت 4:3 */ height: 0; }
 
-.controls { display: flex; gap: 12px; margin-bottom: 20px; }
-.btn { flex: 1; border: none; padding: 14px; border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: 0.2s; }
-.btn:active { transform: scale(0.98); }
-.btn-primary { background: #3b82f6; color: white; }
-.btn-danger { background: #ef4444; color: white; }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.controls { display: flex; gap: 15px; margin-bottom: 20px; }
+.btn { flex: 1; border: none; padding: 16px; border-radius: 16px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: transform 0.1s; }
+.btn:active { transform: scale(0.96); }
+.btn-primary { background: #4f46e5; color: white; box-shadow: 0 4px 6px rgba(79, 70, 229, 0.3); }
+.btn-danger { background: #ef4444; color: white; box-shadow: 0 4px 6px rgba(239, 68, 68, 0.3); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
 
-.options { 
-    display: flex; justify-content: space-around; 
-    background: #f3f4f6; padding: 12px; border-radius: 12px; margin-bottom: 15px; 
-    font-size: 0.95rem; color: #374151;
+.options { display: flex; justify-content: center; margin-bottom: 15px; }
+.switch-label { 
+    display: flex; align-items: center; gap: 10px; 
+    background: #f3f4f6; padding: 10px 20px; border-radius: 50px;
+    cursor: pointer; user-select: none;
 }
 
 .logs { 
-    text-align: right; height: 120px; overflow-y: auto; 
+    text-align: right; height: 100px; overflow-y: auto; 
     font-size: 0.8rem; color: #4b5563; 
-    border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px; 
-    background: #f9fafb;
+    border-top: 2px solid #f3f4f6; padding-top: 10px;
 }
-.log-entry { padding: 4px 0; border-bottom: 1px dashed #e5e7eb; }
+.log-entry { padding: 4px 0; border-bottom: 1px dashed #e5e7eb; color: #b91c1c; }
