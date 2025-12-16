@@ -1,561 +1,407 @@
 import os
 import urllib.request
-from pathlib import Path
 
-def download_file(url, filepath):
-    """دانلود فایل با مدیریت خطا"""
-    try:
-        print(f"Downloading {filepath}...")
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        urllib.request.urlretrieve(url, filepath)
-        print(f"✅ Downloaded: {filepath}")
-    except Exception as e:
-        print(f"❌ Error downloading {filepath}: {e}")
+# ---------------------------------------------------------
+# تنظیمات مسیر پروژه
+# ---------------------------------------------------------
+base_dir = "tools/face_detection_camera_fixed"
+js_dir = os.path.join(base_dir, "js")
+css_dir = os.path.join(base_dir, "css")
 
-def create_project_structure():
-    """ایجاد ساختار پروژه و دانلود فایل‌ها"""
-    
-    # ایجاد پوشه‌ها
-    folders = ['css', 'js/libs', 'js/models', 'sounds']
-    for folder in folders:
-        Path(folder).mkdir(parents=True, exist_ok=True)
-        print(f"✅ Created folder: {folder}")
-    
-    # دانلود کتابخانه‌ها
-    libraries = {
-        'js/libs/face-api.min.js': 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js',
-        'js/libs/tracking-min.js': 'https://cdn.jsdelivr.net/npm/tracking@1.1.3/build/tracking-min.js'
-    }
-    
-    for filepath, url in libraries.items():
-        download_file(url, filepath)
-    
-    # دانلود مدل‌های Face-API
-    base_model_url = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/'
-    models = [
-        'tiny_face_detector_model-weights_manifest.json',
-        'tiny_face_detector_model-shard1',
-        'face_landmark_68_model-weights_manifest.json',
-        'face_landmark_68_model-shard1',
-        'face_recognition_model-weights_manifest.json',
-        'face_recognition_model-shard1',
-        'face_recognition_model-shard2'
-    ]
-    
-    for model in models:
-        download_file(base_model_url + model, f'js/models/{model}')
-    
-    # ایجاد index.html
-    html_content = '''<!DOCTYPE html>
+# ساخت پوشه‌ها
+os.makedirs(js_dir, exist_ok=True)
+os.makedirs(css_dir, exist_ok=True)
+
+print("⏳ در حال بررسی و دانلود کتابخانه‌های هوش مصنوعی...")
+
+# ---------------------------------------------------------
+# دانلودر فایل‌های جاوا اسکریپت (برای آفلاین سازی)
+# ---------------------------------------------------------
+libs = {
+    "tf.min.js": "https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.11.0/dist/tf.min.js",
+    "blazeface.min.js": "https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface@0.0.7/dist/blazeface.min.js",
+    "posenet.min.js": "https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet@2.2.2/dist/posenet.min.js"
+}
+
+for filename, url in libs.items():
+    file_path = os.path.join(js_dir, filename)
+    if not os.path.exists(file_path):
+        try:
+            print(f"   ⬇️ دانلود {filename}...")
+            urllib.request.urlretrieve(url, file_path)
+        except Exception as e:
+            print(f"❌ خطا در دانلود {filename}: {e}")
+    else:
+        print(f"   ✅ فایل {filename} از قبل موجود است.")
+
+# ---------------------------------------------------------
+# 1. HTML (index.html)
+# ---------------------------------------------------------
+html_content = """<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>سیستم امنیتی دوربین</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>شکارگر چهره (بر اساس وضوح)</title>
     <link rel="stylesheet" href="css/style.css">
+    
+    <!-- کتابخانه‌های لوکال -->
+    <script src="js/tf.min.js"></script>
+    <script src="js/blazeface.min.js"></script>
+    <script src="js/posenet.min.js"></script>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🔒 سیستم امنیتی دوربین</h1>
-            <div class="status" id="status">در حال بارگذاری...</div>
-        </header>
 
-        <div class="controls">
-            <button id="switchCamera" class="btn">🔄 تغییر دوربین</button>
-            <button id="startBtn" class="btn btn-primary">▶ شروع</button>
-            <button id="stopBtn" class="btn btn-danger">⏹ توقف</button>
-        </div>
-
-        <div class="video-container">
-            <video id="video" autoplay playsinline muted></video>
-            <canvas id="overlay"></canvas>
-        </div>
-
-        <div class="stats">
-            <div class="stat-item">
-                <span class="stat-label">افراد شناسایی شده:</span>
-                <span class="stat-value" id="totalPeople">0</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-label">دوربین فعال:</span>
-                <span class="stat-value" id="currentCamera">جلو</span>
-            </div>
-        </div>
-
-        <div class="gallery">
-            <h2>📸 گالری تصاویر</h2>
-            <div id="gallery" class="gallery-grid"></div>
-        </div>
+<div class="app-container">
+    <div class="top-bar">
+        <h3>📷 سیستم تشخیص هوشمند</h3>
+        <div class="status-indicator waiting" id="statusBadge">در حال لود...</div>
     </div>
 
-    <audio id="alarm" loop>
-        <source src="sounds/alarm.mp3" type="audio/mpeg">
-    </audio>
+    <div class="camera-wrapper">
+        <video id="video" playsinline muted autoplay></video>
+        <canvas id="canvas"></canvas>
+    </div>
 
-    <script src="js/libs/face-api.min.js"></script>
-    <script src="js/libs/tracking-min.js"></script>
-    <script src="js/app.js"></script>
+    <div class="controls-area">
+        <div class="row">
+            <select id="cameraSelect" class="input-select">
+                <option value="" disabled selected>انتخاب دوربین...</option>
+            </select>
+            <button id="startBtn" class="btn btn-primary" disabled>شروع</button>
+            <button id="stopBtn" class="btn btn-danger" disabled>توقف</button>
+        </div>
+        
+        <div class="row settings-row">
+            <label class="toggle-label">
+                <span>🔔 آژیر</span>
+                <input type="checkbox" id="alarmToggle" checked>
+                <span class="toggle-switch"></span>
+            </label>
+            <button id="clearGallery" class="btn btn-sm">پاکسازی</button>
+        </div>
+        <div class="info-text">ملاک جایگزینی: فقط وضوح اجزای صورت (فاصله مهم نیست)</div>
+    </div>
+
+    <div class="gallery-section">
+        <h4>لیست افراد (بهترین تصویر)</h4>
+        <div id="galleryGrid" class="gallery-grid"></div>
+    </div>
+</div>
+
+<script src="js/app.js"></script>
 </body>
-</html>'''
-    
-    with open('index.html', 'w', encoding='utf-8') as f:
-        f.write(html_content)
-    print("✅ Created: index.html")
-    
-    # ایجاد style.css
-    css_content = '''* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+</html>"""
 
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    min-height: 100vh;
-    padding: 20px;
-}
+# ---------------------------------------------------------
+# 2. CSS (css/style.css)
+# ---------------------------------------------------------
+css_content = """@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap');
+:root { --primary: #2563eb; --danger: #dc2626; --bg: #f8fafc; --card: #ffffff; }
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Vazirmatn', sans-serif; -webkit-tap-highlight-color: transparent; }
+body { background: var(--bg); padding: 10px; color: #334155; }
+.app-container { max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+.top-bar { display: flex; justify-content: space-between; align-items: center; background: var(--card); padding: 10px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.status-indicator { padding: 3px 8px; border-radius: 15px; font-size: 0.75rem; font-weight: bold; }
+.waiting { background: #e2e8f0; color: #64748b; }
+.active { background: #dcfce7; color: #166534; }
+.camera-wrapper { position: relative; width: 100%; aspect-ratio: 4/3; background: #000; border-radius: 12px; overflow: hidden; }
+video { width: 100%; height: 100%; object-fit: cover; }
+canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+.controls-area { background: var(--card); padding: 12px; border-radius: 10px; display: flex; flex-direction: column; gap: 8px; }
+.row { display: flex; gap: 8px; }
+.settings-row { justify-content: space-between; align-items: center; margin-top: 5px; border-top: 1px solid #f1f5f9; padding-top: 8px; }
+.input-select { flex: 2; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; background: white; }
+.btn { border: none; padding: 8px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; color: white; }
+.btn:disabled { opacity: 0.5; }
+.btn-primary { background: var(--primary); flex: 1; }
+.btn-danger { background: var(--danger); flex: 1; }
+.btn-sm { background: #94a3b8; font-size: 0.75rem; padding: 5px 10px; flex: 0; }
+.info-text { font-size: 0.7rem; color: #64748b; text-align: center; margin-top: 4px; }
+.toggle-label { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; }
+.toggle-label input { display: none; }
+.toggle-switch { width: 32px; height: 18px; background: #cbd5e1; border-radius: 20px; position: relative; transition: 0.3s; display: inline-block; }
+.toggle-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: white; border-radius: 50%; transition: 0.3s; }
+input:checked + .toggle-switch { background: var(--primary); }
+input:checked + .toggle-switch::after { transform: translateX(14px); }
+.gallery-section { background: var(--card); padding: 10px; border-radius: 10px; min-height: 150px; }
+.gallery-section h4 { font-size: 0.85rem; color: #64748b; margin-bottom: 8px; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px; }
+.gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; }
+.person-card { background: #f8fafb; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; position: relative; }
+.person-card img { width: 100%; height: 90px; object-fit: cover; display: block; }
+.card-info { padding: 4px; font-size: 0.65rem; color: #475569; text-align: center; background: #fff; }
+.score-tag { position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.6); color: #fff; padding: 1px 4px; border-radius: 3px; font-size: 0.6rem; }
+.update-badge { position: absolute; top: 2px; left: 2px; background: #10b981; color: white; font-size: 0.6rem; padding: 2px 4px; border-radius: 3px; opacity: 0; transition: opacity 0.5s; }
+.person-card.updated .update-badge { opacity: 1; }
+"""
 
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    background: white;
-    border-radius: 20px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-    overflow: hidden;
-}
+# ---------------------------------------------------------
+# 3. JavaScript (js/app.js) - اصلاح منطق جایگزینی
+# ---------------------------------------------------------
+js_content = """
+const SETTINGS = {
+    alarmCooldown: 2000,
+    similarityThreshold: 80, // پیکسل برای تشخیص هویت (ترکینگ)
+};
 
-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 30px;
-    text-align: center;
-}
-
-header h1 {
-    font-size: 2rem;
-    margin-bottom: 10px;
-}
-
-.status {
-    display: inline-block;
-    padding: 8px 20px;
-    background: rgba(255,255,255,0.2);
-    border-radius: 20px;
-    font-size: 0.9rem;
-}
-
-.controls {
-    display: flex;
-    gap: 15px;
-    padding: 20px;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-.btn {
-    padding: 12px 30px;
-    border: none;
-    border-radius: 10px;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: all 0.3s;
-    font-weight: bold;
-}
-
-.btn-primary {
-    background: #10b981;
-    color: white;
-}
-
-.btn-primary:hover {
-    background: #059669;
-    transform: translateY(-2px);
-}
-
-.btn-danger {
-    background: #ef4444;
-    color: white;
-}
-
-.btn-danger:hover {
-    background: #dc2626;
-    transform: translateY(-2px);
-}
-
-.btn:active {
-    transform: translateY(0);
-}
-
-.video-container {
-    position: relative;
-    max-width: 640px;
-    margin: 0 auto;
-    background: #000;
-    border-radius: 10px;
-    overflow: hidden;
-}
-
-#video {
-    width: 100%;
-    height: auto;
-    display: block;
-}
-
-#overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-}
-
-.stats {
-    display: flex;
-    justify-content: space-around;
-    padding: 30px;
-    background: #f8fafc;
-    flex-wrap: wrap;
-    gap: 20px;
-}
-
-.stat-item {
-    text-align: center;
-}
-
-.stat-label {
-    display: block;
-    color: #64748b;
-    font-size: 0.9rem;
-    margin-bottom: 5px;
-}
-
-.stat-value {
-    display: block;
-    font-size: 2rem;
-    font-weight: bold;
-    color: #667eea;
-}
-
-.gallery {
-    padding: 30px;
-}
-
-.gallery h2 {
-    color: #1e293b;
-    margin-bottom: 20px;
-    text-align: center;
-}
-
-.gallery-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 20px;
-}
-
-.gallery-item {
-    position: relative;
-    border-radius: 10px;
-    overflow: hidden;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    transition: transform 0.3s;
-}
-
-.gallery-item:hover {
-    transform: scale(1.05);
-}
-
-.gallery-item img {
-    width: 100%;
-    height: 200px;
-    object-fit: cover;
-}
-
-.gallery-item .info {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
-    color: white;
-    padding: 10px;
-    font-size: 0.8rem;
-}
-
-@media (max-width: 768px) {
-    header h1 {
-        font-size: 1.5rem;
-    }
-    
-    .controls {
-        flex-direction: column;
-    }
-    
-    .btn {
-        width: 100%;
-    }
-    
-    .gallery-grid {
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    }
-}'''
-    
-    with open('css/style.css', 'w', encoding='utf-8') as f:
-        f.write(css_content)
-    print("✅ Created: css/style.css")
-    
-    # ایجاد app.js
-    js_content = '''// متغیرهای سراسری
-let video, canvas, ctx, alarm;
+let video, canvas, ctx;
+let faceModel, poseModel;
+let isDetecting = false;
 let stream = null;
-let isRunning = false;
-let currentCamera = 'user'; // 'user' = جلو, 'environment' = پشت
-let detectedPeople = [];
-let modelsLoaded = false;
+let lastAlarmTime = 0;
+let trackedPersons = []; 
+let personIdCounter = 1;
 
-// بارگذاری مدل‌های Face-API
-async function loadModels() {
+const els = {
+    status: document.getElementById('statusBadge'),
+    cameraSelect: document.getElementById('cameraSelect'),
+    startBtn: document.getElementById('startBtn'),
+    stopBtn: document.getElementById('stopBtn'),
+    gallery: document.getElementById('galleryGrid'),
+    alarmToggle: document.getElementById('alarmToggle')
+};
+
+const alarmSound = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+
+async function init() {
+    video = document.getElementById('video');
+    canvas = document.getElementById('canvas');
+    ctx = canvas.getContext('2d');
+    await getCameras();
+
     try {
-        document.getElementById('status').textContent = 'در حال بارگذاری مدل‌های هوش مصنوعی...';
-        
-        await faceapi.nets.tinyFaceDetector.loadFromUri('js/models');
-        await faceapi.nets.faceLandmark68Net.loadFromUri('js/models');
-        await faceapi.nets.faceRecognitionNet.loadFromUri('js/models');
-        
-        modelsLoaded = true;
-        document.getElementById('status').textContent = '✅ آماده به کار';
-        console.log('✅ Models loaded successfully');
-    } catch (error) {
-        console.error('❌ Error loading models:', error);
-        document.getElementById('status').textContent = '❌ خطا در بارگذاری مدل‌ها';
+        els.status.innerText = "⏳ لود هوش مصنوعی...";
+        faceModel = await blazeface.load(); 
+        poseModel = await posenet.load({
+            architecture: 'MobileNetV1',
+            outputStride: 16,
+            inputResolution: { width: 320, height: 240 },
+            multiplier: 0.5
+        });
+        els.status.innerText = "✅ آماده";
+        els.status.className = "status-indicator active";
+        els.startBtn.disabled = false;
+    } catch (err) {
+        console.error(err);
+        els.status.innerText = "❌ خطا در لود مدل";
+        alert("لطفا اینترنت را چک کنید (فقط بار اول).");
     }
 }
 
-// راه‌اندازی اولیه
-window.addEventListener('DOMContentLoaded', async () => {
-    video = document.getElementById('video');
-    canvas = document.getElementById('overlay');
-    ctx = canvas.getContext('2d');
-    alarm = document.getElementById('alarm');
-    
-    await loadModels();
-    
-    document.getElementById('startBtn').addEventListener('click', startDetection);
-    document.getElementById('stopBtn').addEventListener('click', stopDetection);
-    document.getElementById('switchCamera').addEventListener('click', switchCamera);
-});
-
-// شروع دوربین
-async function startCamera() {
+async function getCameras() {
     try {
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-        }
-        
-        const constraints = {
-            video: {
-                facingMode: currentCamera,
-                width: { ideal: 640 },
-                height: { ideal: 480 }
-            },
-            audio: false
-        };
-        
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        els.cameraSelect.innerHTML = '<option value="" disabled>انتخاب دوربین...</option>';
+        videoDevices.forEach((device, index) => {
+            const option = document.createElement('option');
+            option.value = device.deviceId;
+            option.text = device.label || `دوربین ${index + 1}`;
+            els.cameraSelect.appendChild(option);
+        });
+        if (videoDevices.length > 0) els.cameraSelect.selectedIndex = videoDevices.length > 1 ? 1 : 0;
+    } catch (e) { console.error(e); }
+}
+
+els.startBtn.addEventListener('click', () => startCamera(els.cameraSelect.value));
+els.stopBtn.addEventListener('click', stopCamera);
+els.cameraSelect.addEventListener('change', () => { if(isDetecting) startCamera(els.cameraSelect.value); });
+
+async function startCamera(deviceId) {
+    stopCamera();
+    const constraints = {
+        video: {
+            deviceId: deviceId ? { exact: deviceId } : undefined,
+            width: { ideal: 640 },
+            height: { ideal: 480 }
+        },
+        audio: false
+    };
+    try {
         stream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = stream;
-        
         video.onloadedmetadata = () => {
+            video.play();
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
+            isDetecting = true;
+            els.startBtn.disabled = true;
+            els.stopBtn.disabled = false;
+            els.status.innerText = "👁‍🗨 در حال شکار...";
+            detectLoop();
         };
-        
-        document.getElementById('currentCamera').textContent = 
-            currentCamera === 'user' ? 'جلو' : 'پشت';
-        
-        return true;
-    } catch (error) {
-        console.error('❌ Camera error:', error);
-        document.getElementById('status').textContent = '❌ خطا در دسترسی به دوربین';
-        return false;
-    }
+    } catch (err) { alert("خطا در دوربین: " + err.name); }
 }
 
-// تغییر دوربین
-async function switchCamera() {
-    currentCamera = currentCamera === 'user' ? 'environment' : 'user';
-    if (isRunning) {
-        await startCamera();
-    }
-}
-
-// شروع تشخیص
-async function startDetection() {
-    if (!modelsLoaded) {
-        alert('لطفاً صبر کنید تا مدل‌ها بارگذاری شوند');
-        return;
-    }
-    
-    const cameraStarted = await startCamera();
-    if (!cameraStarted) return;
-    
-    isRunning = true;
-    document.getElementById('status').textContent = '🔴 در حال تشخیص...';
-    detectFaces();
-}
-
-// توقف تشخیص
-function stopDetection() {
-    isRunning = false;
-    if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        stream = null;
-    }
-    alarm.pause();
-    alarm.currentTime = 0;
-    document.getElementById('status').textContent = '⏸ متوقف شده';
+function stopCamera() {
+    isDetecting = false;
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    video.srcObject = null;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    els.startBtn.disabled = false;
+    els.stopBtn.disabled = true;
+    els.status.innerText = "⏹ متوقف";
 }
 
-// تشخیص چهره
-async function detectFaces() {
-    if (!isRunning) return;
-    
-    try {
-        const detections = await faceapi
-            .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
-            .withFaceLandmarks()
-            .withFaceDescriptors();
-        
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        if (detections.length > 0) {
-            detections.forEach(detection => {
-                drawDetection(detection);
-                processPerson(detection);
-            });
-        }
-        
-        requestAnimationFrame(detectFaces);
-    } catch (error) {
-        console.error('Detection error:', error);
-        requestAnimationFrame(detectFaces);
+async function detectLoop() {
+    if (!isDetecting) return;
+    const faces = await faceModel.estimateFaces(video, false);
+    const pose = await poseModel.estimateSinglePose(video, { flipHorizontal: false });
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    let detectedAnything = false;
+    if (faces.length > 0) {
+        detectedAnything = true;
+        faces.forEach(processFace);
     }
+    if (pose.score >= 0.4) {
+        detectedAnything = true;
+        drawSkeleton(pose.keypoints);
+    }
+    if (detectedAnything && els.alarmToggle.checked) {
+        const now = Date.now();
+        if (now - lastAlarmTime > SETTINGS.alarmCooldown) {
+            alarmSound.play().catch(e => {});
+            lastAlarmTime = now;
+        }
+    }
+    requestAnimationFrame(detectLoop);
 }
 
-// رسم کادر تشخیص
-function drawDetection(detection) {
-    const box = detection.detection.box;
-    const landmarks = detection.landmarks.positions;
-    
-    // رسم کادر
+// -------------------------------------------------------------
+// بخش مهم: منطق جایگزینی فقط بر اساس کیفیت اجزا
+// -------------------------------------------------------------
+function processFace(face) {
+    const start = face.topLeft;
+    const end = face.bottomRight;
+    const w = end[0] - start[0];
+    const h = end[1] - start[1];
+    const centerX = start[0] + w/2;
+    const centerY = start[1] + h/2;
+
+    // *** تغییر اصلی اینجاست ***
+    // ما فاکتور اندازه (w*h) را کاملا حذف کردیم.
+    // face.probability عددی بین 0 و 1 است که نشان‌دهنده اطمینان مدل از وجود اجزای صورت است.
+    // هرچه این عدد بیشتر باشد، یعنی اجزای صورت (چشم، بینی) واضح‌تر دیده شده‌اند، حتی اگر دور باشد.
+    const currentQuality = face.probability[0]; 
+
+    // رسم باکس
     ctx.strokeStyle = '#00ff00';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(box.x, box.y, box.width, box.height);
-    
-    // رسم نقاط صورت
-    ctx.fillStyle = '#ff0000';
-    landmarks.forEach(point => {
-        ctx.beginPath();
-        ctx.arc(point.x, point.y, 2, 0, 2 * Math.PI);
-        ctx.fill();
-    });
-}
+    ctx.lineWidth = 2;
+    ctx.strokeRect(start[0], start[1], w, h);
 
-// پردازش فرد جدید
-function processPerson(detection) {
-    const descriptor = detection.descriptor;
-    const landmarks = detection.landmarks.positions;
-    const landmarkCount = landmarks.length;
-    
-    // بررسی آیا این فرد قبلاً شناسایی شده
-    let existingPerson = null;
-    let minDistance = 0.6; // آستانه تشخیص (پایین‌تر = دقیق‌تر)
-    
-    for (let person of detectedPeople) {
-        const distance = faceapi.euclideanDistance(descriptor, person.descriptor);
-        if (distance < minDistance) {
-            minDistance = distance;
-            existingPerson = person;
+    // شناسایی فرد (Tracking)
+    let matchIndex = -1;
+    for (let i = 0; i < trackedPersons.length; i++) {
+        const p = trackedPersons[i];
+        const dist = Math.sqrt(Math.pow(p.x - centerX, 2) + Math.pow(p.y - centerY, 2));
+        if (dist < SETTINGS.similarityThreshold) {
+            matchIndex = i;
+            break;
         }
     }
-    
-    if (existingPerson) {
-        // اگر تعداد اجزای صورت بیشتر است، عکس را به‌روز کن
-        if (landmarkCount > existingPerson.landmarkCount) {
-            existingPerson.landmarkCount = landmarkCount;
-            existingPerson.image = captureFrame();
-            updateGallery();
+
+    if (matchIndex !== -1) {
+        // --- فرد تکراری ---
+        const person = trackedPersons[matchIndex];
+        person.x = centerX;
+        person.y = centerY;
+        person.lastSeen = Date.now();
+
+        // شرط جایگزینی: فقط اگر کیفیت وضوح فعلی (Probability) بیشتر از قبلی بود
+        // بدون توجه به سایز
+        if (currentQuality > person.qualityScore + 0.01) { // 0.01 حاشیه خطا برای جلوگیری از پرش
+            console.log(`📸 تصویر واضح‌تر یافت شد (امتیاز: ${currentQuality.toFixed(2)})`);
+            person.qualityScore = currentQuality;
+            updateGalleryImage(person.id, captureCrop(start[0], start[1], w, h), currentQuality);
         }
+
     } else {
-        // فرد جدید
+        // --- فرد جدید ---
+        const newId = personIdCounter++;
         const newPerson = {
-            id: Date.now(),
-            descriptor: descriptor,
-            landmarkCount: landmarkCount,
-            image: captureFrame(),
-            timestamp: new Date().toLocaleString('fa-IR')
+            id: newId,
+            x: centerX,
+            y: centerY,
+            qualityScore: currentQuality,
+            lastSeen: Date.now()
         };
-        
-        detectedPeople.push(newPerson);
-        updateGallery();
-        playAlarm();
+        trackedPersons.push(newPerson);
+        addToGallery(newId, captureCrop(start[0], start[1], w, h), currentQuality);
     }
 }
 
-// ضبط فریم
-function captureFrame() {
-    const captureCanvas = document.createElement('canvas');
-    captureCanvas.width = video.videoWidth;
-    captureCanvas.height = video.videoHeight;
-    const captureCtx = captureCanvas.getContext('2d');
-    captureCtx.drawImage(video, 0, 0);
-    return captureCanvas.toDataURL('image/jpeg');
-}
+setInterval(() => {
+    const now = Date.now();
+    trackedPersons = trackedPersons.filter(p => (now - p.lastSeen) < 5000);
+}, 5000);
 
-// به‌روزرسانی گالری
-function updateGallery() {
-    const gallery = document.getElementById('gallery');
-    gallery.innerHTML = '';
-    
-    detectedPeople.forEach(person => {
-        const item = document.createElement('div');
-        item.className = 'gallery-item';
-        item.innerHTML = `
-            <img src="${person.image}" alt="Person ${person.id}">
-            <div class="info">
-                <div>زمان: ${person.timestamp}</div>
-                <div>اجزای صورت: ${person.landmarkCount}</div>
-            </div>
-        `;
-        gallery.appendChild(item);
+function drawSkeleton(keypoints) {
+    keypoints.forEach(point => {
+        if (point.score > 0.5) {
+            ctx.beginPath();
+            ctx.arc(point.position.x, point.position.y, 3, 0, 2 * Math.PI);
+            ctx.fillStyle = "rgba(255, 0, 0, 0.5)";
+            ctx.fill();
+        }
     });
-    
-    document.getElementById('totalPeople').textContent = detectedPeople.length;
 }
 
-// پخش آژیر
-function playAlarm() {
-    alarm.play().catch(e => console.log('Alarm play error:', e));
-    setTimeout(() => alarm.pause(), 3000);
+function captureCrop(x, y, w, h) {
+    const tCanvas = document.createElement('canvas');
+    const tCtx = tCanvas.getContext('2d');
+    const pad = 10;
+    const sx = Math.max(0, x - pad);
+    const sy = Math.max(0, y - pad);
+    const sw = Math.min(video.videoWidth - sx, w + (pad*2));
+    const sh = Math.min(video.videoHeight - sy, h + (pad*2));
+    tCanvas.width = sw;
+    tCanvas.height = sh;
+    tCtx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
+    return tCanvas.toDataURL('image/jpeg', 0.85);
 }
 
-// پاک کردن داده‌ها هنگام بستن
-window.addEventListener('beforeunload', () => {
-    detectedPeople = [];
-    stopDetection();
-});'''
-    
-    with open('js/app.js', 'w', encoding='utf-8') as f:
-        f.write(js_content)
-    print("✅ Created: js/app.js")
-    
-    print("\n" + "="*50)
-    print("✅ تمام فایل‌ها با موفقیت ساخته شدند!")
-    print("="*50)
-    print("\n⚠️ یادآوری:")
-    print("فایل sounds/alarm.mp3 را دستی آپلود کنید")
+function addToGallery(id, imgData, score) {
+    const div = document.createElement('div');
+    div.className = 'person-card';
+    div.id = `person-${id}`;
+    div.innerHTML = `
+        <span class="update-badge">بهتر شد!</span>
+        <span class="score-tag">وضوح: ${(score*100).toFixed(0)}%</span>
+        <img src="${imgData}" id="img-${id}">
+        <div class="card-info">شناسه: ${id}</div>
+    `;
+    els.gallery.prepend(div);
+}
 
-if __name__ == '__main__':
-    create_project_structure()
+function updateGalleryImage(id, newImgData, score) {
+    const imgEl = document.getElementById(`img-${id}`);
+    const cardEl = document.getElementById(`person-${id}`);
+    if (imgEl && cardEl) {
+        imgEl.src = newImgData;
+        cardEl.querySelector('.score-tag').innerText = `وضوح: ${(score*100).toFixed(0)}%`;
+        cardEl.classList.add('updated');
+        setTimeout(() => cardEl.classList.remove('updated'), 2000);
+    }
+}
+
+document.getElementById('clearGallery').addEventListener('click', () => {
+    els.gallery.innerHTML = '';
+    trackedPersons = [];
+});
+window.onload = init;
+"""
+
+# ---------------------------------------------------------
+# نوشتن فایل‌ها
+# ---------------------------------------------------------
+with open(os.path.join(base_dir, "index.html"), "w", encoding="utf-8") as f:
+    f.write(html_content)
+
+with open(os.path.join(css_dir, "style.css"), "w", encoding="utf-8") as f:
+    f.write(css_content)
+
+with open(os.path.join(js_dir, "app.js"), "w", encoding="utf-8") as f:
+    f.write(js_content)
+
+print(f"✅ اصلاح انجام شد: فاکتور فاصله حذف شد. پروژه در '{base_dir}' آماده است.")
