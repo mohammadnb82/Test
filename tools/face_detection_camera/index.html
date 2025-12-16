@@ -2,49 +2,45 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>دوربین نگهبان تشخیص چهره و بدن</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>دوربین نگهبان هوشمند</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🎥 دوربین نگهبان تشخیص چهره و بدن</h1>
-            <div class="status" id="status">آماده</div>
+            <h1>🎥 دوربین نگهبان هوشمند</h1>
+            <div class="status" id="status">آماده به کار</div>
         </header>
 
         <div class="controls">
-            <button id="startBtn" class="btn btn-primary">▶️ شروع دوربین</button>
-            <button id="stopBtn" class="btn btn-danger" disabled>⏹️ توقف دوربین</button>
-            <button id="clearBtn" class="btn btn-warning">🗑️ پاک کردن تصاویر</button>
+            <button id="startBtn" class="btn btn-primary">▶️ روشن کردن دوربین</button>
+            <button id="stopBtn" class="btn btn-danger" disabled>⏹️ خاموش</button>
             
-            <div class="toggle-controls">
-                <label class="toggle-switch">
-                    <input type="checkbox" id="saveToggle">
-                    <span class="toggle-slider"></span>
-                    <span class="toggle-label">💾 ذخیره تصاویر</span>
-                </label>
-                
-                <label class="toggle-switch">
+            <div class="toggle-wrapper">
+                <label class="toggle">
                     <input type="checkbox" id="alarmToggle">
-                    <span class="toggle-slider"></span>
-                    <span class="toggle-label">🔔 صدای آژیر</span>
+                    <span class="slider"></span>
+                    <span class="label-text">🔊 صدای آژیر</span>
                 </label>
             </div>
         </div>
 
-        <div class="video-container">
-            <video id="video" autoplay playsinline></video>
+        <div class="video-wrapper">
+            <!-- ویژگی playsinline برای آیفون حیاتی است -->
+            <video id="video" playsinline webkit-playsinline muted autoplay></video>
             <canvas id="canvas"></canvas>
-            <div class="detection-info" id="detectionInfo"></div>
+            <div class="overlay-msg" id="msg">...</div>
         </div>
 
-        <div class="faces-section">
-            <h2>موارد شناسایی شده</h2>
-            <div id="facesContainer" class="faces-grid"></div>
+        <div class="logs">
+            <h3>📝 گزارش‌ها</h3>
+            <div id="logContainer"></div>
+            <button id="clearLogs" class="btn btn-small">پاک کردن لیست</button>
         </div>
     </div>
 
+    <!-- کتابخانه‌های هوش مصنوعی -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet"></script>
