@@ -1,612 +1,407 @@
 import os
+import urllib.request
 
-def create_project_structure():
-    """Create necessary directories and files"""
-    
-    # Create directories
-    directories = [
-        'static/css',
-        'static/js',
-        'static/sounds',
-        'templates',
-        'saved_images'
-    ]
-    
-    for directory in directories:
-        os.makedirs(directory, exist_ok=True)
-        print(f"✓ Created directory: {directory}")
-    
-    # Create index.html
-    html_content = """<!DOCTYPE html>
+# ---------------------------------------------------------
+# تنظیمات مسیر پروژه
+# ---------------------------------------------------------
+base_dir = "tools/face_detection_camera_fixed"
+js_dir = os.path.join(base_dir, "js")
+css_dir = os.path.join(base_dir, "css")
+
+# ساخت پوشه‌ها
+os.makedirs(js_dir, exist_ok=True)
+os.makedirs(css_dir, exist_ok=True)
+
+print("⏳ در حال بررسی و دانلود کتابخانه‌های هوش مصنوعی...")
+
+# ---------------------------------------------------------
+# دانلودر فایل‌های جاوا اسکریپت (برای آفلاین سازی)
+# ---------------------------------------------------------
+libs = {
+    "tf.min.js": "https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.11.0/dist/tf.min.js",
+    "blazeface.min.js": "https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface@0.0.7/dist/blazeface.min.js",
+    "posenet.min.js": "https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet@2.2.2/dist/posenet.min.js"
+}
+
+for filename, url in libs.items():
+    file_path = os.path.join(js_dir, filename)
+    if not os.path.exists(file_path):
+        try:
+            print(f"   ⬇️ دانلود {filename}...")
+            urllib.request.urlretrieve(url, file_path)
+        except Exception as e:
+            print(f"❌ خطا در دانلود {filename}: {e}")
+    else:
+        print(f"   ✅ فایل {filename} از قبل موجود است.")
+
+# ---------------------------------------------------------
+# 1. HTML (index.html)
+# ---------------------------------------------------------
+html_content = """<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>دوربین نگهبان هوشمند</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>شکارگر چهره (بر اساس وضوح)</title>
+    <link rel="stylesheet" href="css/style.css">
+    
+    <!-- کتابخانه‌های لوکال -->
+    <script src="js/tf.min.js"></script>
+    <script src="js/blazeface.min.js"></script>
+    <script src="js/posenet.min.js"></script>
 </head>
 <body>
-    <div class="container">
-        <h1>🎥 دوربین نگهبان محلی</h1>
-        
-        <div class="controls">
-            <button id="startBtn" class="btn btn-primary">▶️ شروع دوربین</button>
-            <button id="stopBtn" class="btn btn-danger" disabled>⏹️ توقف دوربین</button>
-        </div>
 
-        <div class="settings-panel">
-            <h3>⚙️ تنظیمات</h3>
-            <div class="setting-group">
-                <label>
-                    <input type="checkbox" id="alarmToggle">
-                    🔊 فعال‌سازی آژیر
-                </label>
-            </div>
-            <div class="setting-group">
-                <label>
-                    <input type="checkbox" id="saveToggle">
-                    💾 ذخیره خودکار تصاویر
-                </label>
-            </div>
-            <div class="setting-group">
-                <label>
-                    حساسیت تشخیص:
-                    <input type="range" id="sensitivity" min="0.3" max="0.9" step="0.1" value="0.5">
-                    <span id="sensitivityValue">0.5</span>
-                </label>
-            </div>
-        </div>
-
-        <div class="status-panel">
-            <div class="status-item">
-                <span class="status-label">وضعیت:</span>
-                <span id="systemStatus" class="status-value">غیرفعال</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">تعداد تشخیص:</span>
-                <span id="detectionCount" class="status-value">0</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">تصاویر ذخیره شده:</span>
-                <span id="savedCount" class="status-value">0</span>
-            </div>
-        </div>
-
-        <div class="video-container">
-            <video id="video" autoplay playsinline></video>
-            <canvas id="canvas"></canvas>
-        </div>
-
-        <div class="gallery">
-            <h3>📸 گالری تصاویر</h3>
-            <div id="imageGallery" class="gallery-grid"></div>
-        </div>
+<div class="app-container">
+    <div class="top-bar">
+        <h3>📷 سیستم تشخیص هوشمند</h3>
+        <div class="status-indicator waiting" id="statusBadge">در حال لود...</div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet"></script>
-    <script src="/static/js/main.js"></script>
+    <div class="camera-wrapper">
+        <video id="video" playsinline muted autoplay></video>
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <div class="controls-area">
+        <div class="row">
+            <select id="cameraSelect" class="input-select">
+                <option value="" disabled selected>انتخاب دوربین...</option>
+            </select>
+            <button id="startBtn" class="btn btn-primary" disabled>شروع</button>
+            <button id="stopBtn" class="btn btn-danger" disabled>توقف</button>
+        </div>
+        
+        <div class="row settings-row">
+            <label class="toggle-label">
+                <span>🔔 آژیر</span>
+                <input type="checkbox" id="alarmToggle" checked>
+                <span class="toggle-switch"></span>
+            </label>
+            <button id="clearGallery" class="btn btn-sm">پاکسازی</button>
+        </div>
+        <div class="info-text">ملاک جایگزینی: فقط وضوح اجزای صورت (فاصله مهم نیست)</div>
+    </div>
+
+    <div class="gallery-section">
+        <h4>لیست افراد (بهترین تصویر)</h4>
+        <div id="galleryGrid" class="gallery-grid"></div>
+    </div>
+</div>
+
+<script src="js/app.js"></script>
 </body>
 </html>"""
-    
-    with open('templates/index.html', 'w', encoding='utf-8') as f:
-        f.write(html_content)
-    print("✓ Created templates/index.html")
-    
-    # Create CSS
-    css_content = """* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
 
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    min-height: 100vh;
-    padding: 20px;
-}
+# ---------------------------------------------------------
+# 2. CSS (css/style.css)
+# ---------------------------------------------------------
+css_content = """@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap');
+:root { --primary: #2563eb; --danger: #dc2626; --bg: #f8fafc; --card: #ffffff; }
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Vazirmatn', sans-serif; -webkit-tap-highlight-color: transparent; }
+body { background: var(--bg); padding: 10px; color: #334155; }
+.app-container { max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+.top-bar { display: flex; justify-content: space-between; align-items: center; background: var(--card); padding: 10px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.status-indicator { padding: 3px 8px; border-radius: 15px; font-size: 0.75rem; font-weight: bold; }
+.waiting { background: #e2e8f0; color: #64748b; }
+.active { background: #dcfce7; color: #166534; }
+.camera-wrapper { position: relative; width: 100%; aspect-ratio: 4/3; background: #000; border-radius: 12px; overflow: hidden; }
+video { width: 100%; height: 100%; object-fit: cover; }
+canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+.controls-area { background: var(--card); padding: 12px; border-radius: 10px; display: flex; flex-direction: column; gap: 8px; }
+.row { display: flex; gap: 8px; }
+.settings-row { justify-content: space-between; align-items: center; margin-top: 5px; border-top: 1px solid #f1f5f9; padding-top: 8px; }
+.input-select { flex: 2; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; background: white; }
+.btn { border: none; padding: 8px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; color: white; }
+.btn:disabled { opacity: 0.5; }
+.btn-primary { background: var(--primary); flex: 1; }
+.btn-danger { background: var(--danger); flex: 1; }
+.btn-sm { background: #94a3b8; font-size: 0.75rem; padding: 5px 10px; flex: 0; }
+.info-text { font-size: 0.7rem; color: #64748b; text-align: center; margin-top: 4px; }
+.toggle-label { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; }
+.toggle-label input { display: none; }
+.toggle-switch { width: 32px; height: 18px; background: #cbd5e1; border-radius: 20px; position: relative; transition: 0.3s; display: inline-block; }
+.toggle-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: white; border-radius: 50%; transition: 0.3s; }
+input:checked + .toggle-switch { background: var(--primary); }
+input:checked + .toggle-switch::after { transform: translateX(14px); }
+.gallery-section { background: var(--card); padding: 10px; border-radius: 10px; min-height: 150px; }
+.gallery-section h4 { font-size: 0.85rem; color: #64748b; margin-bottom: 8px; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px; }
+.gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; }
+.person-card { background: #f8fafb; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; position: relative; }
+.person-card img { width: 100%; height: 90px; object-fit: cover; display: block; }
+.card-info { padding: 4px; font-size: 0.65rem; color: #475569; text-align: center; background: #fff; }
+.score-tag { position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.6); color: #fff; padding: 1px 4px; border-radius: 3px; font-size: 0.6rem; }
+.update-badge { position: absolute; top: 2px; left: 2px; background: #10b981; color: white; font-size: 0.6rem; padding: 2px 4px; border-radius: 3px; opacity: 0; transition: opacity 0.5s; }
+.person-card.updated .update-badge { opacity: 1; }
+"""
 
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    background: white;
-    border-radius: 20px;
-    padding: 30px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-}
+# ---------------------------------------------------------
+# 3. JavaScript (js/app.js) - اصلاح منطق جایگزینی
+# ---------------------------------------------------------
+js_content = """
+const SETTINGS = {
+    alarmCooldown: 2000,
+    similarityThreshold: 80, // پیکسل برای تشخیص هویت (ترکینگ)
+};
 
-h1 {
-    text-align: center;
-    color: #333;
-    margin-bottom: 30px;
-    font-size: 2.5em;
-}
+let video, canvas, ctx;
+let faceModel, poseModel;
+let isDetecting = false;
+let stream = null;
+let lastAlarmTime = 0;
+let trackedPersons = []; 
+let personIdCounter = 1;
 
-.controls {
-    display: flex;
-    gap: 15px;
-    justify-content: center;
-    margin-bottom: 30px;
-}
+const els = {
+    status: document.getElementById('statusBadge'),
+    cameraSelect: document.getElementById('cameraSelect'),
+    startBtn: document.getElementById('startBtn'),
+    stopBtn: document.getElementById('stopBtn'),
+    gallery: document.getElementById('galleryGrid'),
+    alarmToggle: document.getElementById('alarmToggle')
+};
 
-.btn {
-    padding: 15px 30px;
-    font-size: 16px;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.3s;
-    font-weight: bold;
-}
-
-.btn-primary {
-    background: #4CAF50;
-    color: white;
-}
-
-.btn-primary:hover {
-    background: #45a049;
-    transform: translateY(-2px);
-}
-
-.btn-danger {
-    background: #f44336;
-    color: white;
-}
-
-.btn-danger:hover {
-    background: #da190b;
-    transform: translateY(-2px);
-}
-
-.btn:disabled {
-    background: #cccccc;
-    cursor: not-allowed;
-    transform: none;
-}
-
-.settings-panel {
-    background: #f5f5f5;
-    padding: 20px;
-    border-radius: 10px;
-    margin-bottom: 20px;
-}
-
-.settings-panel h3 {
-    margin-bottom: 15px;
-    color: #555;
-}
-
-.setting-group {
-    margin-bottom: 15px;
-}
-
-.setting-group label {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    cursor: pointer;
-}
-
-input[type="checkbox"] {
-    width: 20px;
-    height: 20px;
-    cursor: pointer;
-}
-
-input[type="range"] {
-    flex: 1;
-    margin: 0 10px;
-}
-
-.status-panel {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 15px;
-    margin-bottom: 30px;
-}
-
-.status-item {
-    background: #e3f2fd;
-    padding: 15px;
-    border-radius: 10px;
-    text-align: center;
-}
-
-.status-label {
-    display: block;
-    font-size: 14px;
-    color: #666;
-    margin-bottom: 5px;
-}
-
-.status-value {
-    display: block;
-    font-size: 24px;
-    font-weight: bold;
-    color: #1976d2;
-}
-
-.video-container {
-    position: relative;
-    width: 100%;
-    max-width: 640px;
-    margin: 0 auto 30px;
-    border-radius: 15px;
-    overflow: hidden;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-}
-
-#video {
-    width: 100%;
-    display: block;
-}
-
-#canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-}
-
-.gallery {
-    margin-top: 30px;
-}
-
-.gallery h3 {
-    margin-bottom: 20px;
-    color: #555;
-}
-
-.gallery-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 15px;
-}
-
-.gallery-item {
-    position: relative;
-    border-radius: 10px;
-    overflow: hidden;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-    transition: transform 0.3s;
-}
-
-.gallery-item:hover {
-    transform: scale(1.05);
-}
-
-.gallery-item img {
-    width: 100%;
-    height: 200px;
-    object-fit: cover;
-    display: block;
-}
-
-.gallery-item .delete-btn {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: rgba(244, 67, 54, 0.9);
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 30px;
-    height: 30px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    transition: opacity 0.3s;
-}
-
-.gallery-item:hover .delete-btn {
-    opacity: 1;
-}
-
-.gallery-item .type-badge {
-    position: absolute;
-    bottom: 10px;
-    left: 10px;
-    background: rgba(0,0,0,0.7);
-    color: white;
-    padding: 5px 10px;
-    border-radius: 5px;
-    font-size: 12px;
-}
-
-@media (max-width: 768px) {
-    .container {
-        padding: 15px;
-    }
-    
-    h1 {
-        font-size: 1.8em;
-    }
-    
-    .controls {
-        flex-direction: column;
-    }
-    
-    .btn {
-        width: 100%;
-    }
-}"""
-    
-    with open('static/css/style.css', 'w', encoding='utf-8') as f:
-        f.write(css_content)
-    print("✓ Created static/css/style.css")
-    
-    # Create JavaScript
-    js_content = """let video, canvas, ctx;
-let blazefaceModel, posenetModel;
-let isRunning = false;
-let detectionCount = 0;
-let savedImages = [];
-let alarmEnabled = false;
-let saveEnabled = false;
-let sensitivity = 0.5;
+const alarmSound = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
 
 async function init() {
     video = document.getElementById('video');
     canvas = document.getElementById('canvas');
     ctx = canvas.getContext('2d');
+    await getCameras();
 
-    document.getElementById('startBtn').addEventListener('click', startCamera);
-    document.getElementById('stopBtn').addEventListener('click', stopCamera);
-    document.getElementById('alarmToggle').addEventListener('change', (e) => {
-        alarmEnabled = e.target.checked;
-    });
-    document.getElementById('saveToggle').addEventListener('change', (e) => {
-        saveEnabled = e.target.checked;
-    });
-    document.getElementById('sensitivity').addEventListener('input', (e) => {
-        sensitivity = parseFloat(e.target.value);
-        document.getElementById('sensitivityValue').textContent = sensitivity;
-    });
-
-    await loadModels();
-    loadSavedImages();
-}
-
-async function loadModels() {
     try {
-        document.getElementById('systemStatus').textContent = 'در حال بارگذاری مدل‌ها...';
-        blazefaceModel = await blazeface.load();
-        posenetModel = await posenet.load({
+        els.status.innerText = "⏳ لود هوش مصنوعی...";
+        faceModel = await blazeface.load(); 
+        poseModel = await posenet.load({
             architecture: 'MobileNetV1',
             outputStride: 16,
-            multiplier: 0.75
+            inputResolution: { width: 320, height: 240 },
+            multiplier: 0.5
         });
-        document.getElementById('systemStatus').textContent = 'آماده';
-        console.log('✓ Models loaded successfully');
-    } catch (error) {
-        console.error('Error loading models:', error);
-        document.getElementById('systemStatus').textContent = 'خطا در بارگذاری';
+        els.status.innerText = "✅ آماده";
+        els.status.className = "status-indicator active";
+        els.startBtn.disabled = false;
+    } catch (err) {
+        console.error(err);
+        els.status.innerText = "❌ خطا در لود مدل";
+        alert("لطفا اینترنت را چک کنید (فقط بار اول).");
     }
 }
 
-async function startCamera() {
+async function getCameras() {
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-                facingMode: 'user',
-                width: { ideal: 640 },
-                height: { ideal: 480 }
-            },
-            audio: false
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        els.cameraSelect.innerHTML = '<option value="" disabled>انتخاب دوربین...</option>';
+        videoDevices.forEach((device, index) => {
+            const option = document.createElement('option');
+            option.value = device.deviceId;
+            option.text = device.label || `دوربین ${index + 1}`;
+            els.cameraSelect.appendChild(option);
         });
+        if (videoDevices.length > 0) els.cameraSelect.selectedIndex = videoDevices.length > 1 ? 1 : 0;
+    } catch (e) { console.error(e); }
+}
 
+els.startBtn.addEventListener('click', () => startCamera(els.cameraSelect.value));
+els.stopBtn.addEventListener('click', stopCamera);
+els.cameraSelect.addEventListener('change', () => { if(isDetecting) startCamera(els.cameraSelect.value); });
+
+async function startCamera(deviceId) {
+    stopCamera();
+    const constraints = {
+        video: {
+            deviceId: deviceId ? { exact: deviceId } : undefined,
+            width: { ideal: 640 },
+            height: { ideal: 480 }
+        },
+        audio: false
+    };
+    try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = stream;
-        
         video.onloadedmetadata = () => {
             video.play();
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
-            isRunning = true;
-            document.getElementById('startBtn').disabled = true;
-            document.getElementById('stopBtn').disabled = false;
-            document.getElementById('systemStatus').textContent = 'فعال';
-            detectFrame();
+            isDetecting = true;
+            els.startBtn.disabled = true;
+            els.stopBtn.disabled = false;
+            els.status.innerText = "👁‍🗨 در حال شکار...";
+            detectLoop();
         };
-    } catch (error) {
-        console.error('Camera error:', error);
-        alert('خطا در دسترسی به دوربین!');
-    }
+    } catch (err) { alert("خطا در دوربین: " + err.name); }
 }
 
 function stopCamera() {
-    isRunning = false;
-    if (video.srcObject) {
-        video.srcObject.getTracks().forEach(track => track.stop());
-    }
+    isDetecting = false;
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    video.srcObject = null;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    document.getElementById('startBtn').disabled = false;
-    document.getElementById('stopBtn').disabled = true;
-    document.getElementById('systemStatus').textContent = 'غیرفعال';
+    els.startBtn.disabled = false;
+    els.stopBtn.disabled = true;
+    els.status.innerText = "⏹ متوقف";
 }
 
-async function detectFrame() {
-    if (!isRunning) return;
-
+async function detectLoop() {
+    if (!isDetecting) return;
+    const faces = await faceModel.estimateFaces(video, false);
+    const pose = await poseModel.estimateSinglePose(video, { flipHorizontal: false });
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    let detectionMade = false;
-
-    // Face Detection
-    const faces = await blazefaceModel.estimateFaces(video, false);
+    let detectedAnything = false;
     if (faces.length > 0) {
-        faces.forEach(face => {
-            if (face.probability && face.probability[0] > sensitivity) {
-                const start = face.topLeft;
-                const end = face.bottomRight;
-                const size = [end[0] - start[0], end[1] - start[1]];
+        detectedAnything = true;
+        faces.forEach(processFace);
+    }
+    if (pose.score >= 0.4) {
+        detectedAnything = true;
+        drawSkeleton(pose.keypoints);
+    }
+    if (detectedAnything && els.alarmToggle.checked) {
+        const now = Date.now();
+        if (now - lastAlarmTime > SETTINGS.alarmCooldown) {
+            alarmSound.play().catch(e => {});
+            lastAlarmTime = now;
+        }
+    }
+    requestAnimationFrame(detectLoop);
+}
 
-                ctx.strokeStyle = '#00ff00';
-                ctx.lineWidth = 3;
-                ctx.strokeRect(start[0], start[1], size[0], size[1]);
+// -------------------------------------------------------------
+// بخش مهم: منطق جایگزینی فقط بر اساس کیفیت اجزا
+// -------------------------------------------------------------
+function processFace(face) {
+    const start = face.topLeft;
+    const end = face.bottomRight;
+    const w = end[0] - start[0];
+    const h = end[1] - start[1];
+    const centerX = start[0] + w/2;
+    const centerY = start[1] + h/2;
 
-                ctx.fillStyle = '#00ff00';
-                ctx.font = '16px Arial';
-                ctx.fillText('👤 چهره', start[0], start[1] - 10);
+    // *** تغییر اصلی اینجاست ***
+    // ما فاکتور اندازه (w*h) را کاملا حذف کردیم.
+    // face.probability عددی بین 0 و 1 است که نشان‌دهنده اطمینان مدل از وجود اجزای صورت است.
+    // هرچه این عدد بیشتر باشد، یعنی اجزای صورت (چشم، بینی) واضح‌تر دیده شده‌اند، حتی اگر دور باشد.
+    const currentQuality = face.probability[0]; 
 
-                detectionMade = true;
-            }
-        });
+    // رسم باکس
+    ctx.strokeStyle = '#00ff00';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(start[0], start[1], w, h);
+
+    // شناسایی فرد (Tracking)
+    let matchIndex = -1;
+    for (let i = 0; i < trackedPersons.length; i++) {
+        const p = trackedPersons[i];
+        const dist = Math.sqrt(Math.pow(p.x - centerX, 2) + Math.pow(p.y - centerY, 2));
+        if (dist < SETTINGS.similarityThreshold) {
+            matchIndex = i;
+            break;
+        }
     }
 
-    // Body Detection
-    const poses = await posenetModel.estimateSinglePose(video, {
-        flipHorizontal: false
+    if (matchIndex !== -1) {
+        // --- فرد تکراری ---
+        const person = trackedPersons[matchIndex];
+        person.x = centerX;
+        person.y = centerY;
+        person.lastSeen = Date.now();
+
+        // شرط جایگزینی: فقط اگر کیفیت وضوح فعلی (Probability) بیشتر از قبلی بود
+        // بدون توجه به سایز
+        if (currentQuality > person.qualityScore + 0.01) { // 0.01 حاشیه خطا برای جلوگیری از پرش
+            console.log(`📸 تصویر واضح‌تر یافت شد (امتیاز: ${currentQuality.toFixed(2)})`);
+            person.qualityScore = currentQuality;
+            updateGalleryImage(person.id, captureCrop(start[0], start[1], w, h), currentQuality);
+        }
+
+    } else {
+        // --- فرد جدید ---
+        const newId = personIdCounter++;
+        const newPerson = {
+            id: newId,
+            x: centerX,
+            y: centerY,
+            qualityScore: currentQuality,
+            lastSeen: Date.now()
+        };
+        trackedPersons.push(newPerson);
+        addToGallery(newId, captureCrop(start[0], start[1], w, h), currentQuality);
+    }
+}
+
+setInterval(() => {
+    const now = Date.now();
+    trackedPersons = trackedPersons.filter(p => (now - p.lastSeen) < 5000);
+}, 5000);
+
+function drawSkeleton(keypoints) {
+    keypoints.forEach(point => {
+        if (point.score > 0.5) {
+            ctx.beginPath();
+            ctx.arc(point.position.x, point.position.y, 3, 0, 2 * Math.PI);
+            ctx.fillStyle = "rgba(255, 0, 0, 0.5)";
+            ctx.fill();
+        }
     });
-
-    if (poses.score > sensitivity) {
-        poses.keypoints.forEach(keypoint => {
-            if (keypoint.score > sensitivity) {
-                ctx.beginPath();
-                ctx.arc(keypoint.position.x, keypoint.position.y, 5, 0, 2 * Math.PI);
-                ctx.fillStyle = '#ff0000';
-                ctx.fill();
-            }
-        });
-
-        ctx.fillStyle = '#ff0000';
-        ctx.font = '16px Arial';
-        ctx.fillText('🚶 بدن', 10, 30);
-
-        detectionMade = true;
-    }
-
-    if (detectionMade) {
-        detectionCount++;
-        document.getElementById('detectionCount').textContent = detectionCount;
-
-        if (alarmEnabled) {
-            playAlarm();
-        }
-
-        if (saveEnabled) {
-            saveImage();
-        }
-    }
-
-    requestAnimationFrame(detectFrame);
 }
 
-function playAlarm() {
-    // Simple beep using Web Audio API
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-
-    oscillator.frequency.value = 800;
-    oscillator.type = 'sine';
-
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.5);
+function captureCrop(x, y, w, h) {
+    const tCanvas = document.createElement('canvas');
+    const tCtx = tCanvas.getContext('2d');
+    const pad = 10;
+    const sx = Math.max(0, x - pad);
+    const sy = Math.max(0, y - pad);
+    const sw = Math.min(video.videoWidth - sx, w + (pad*2));
+    const sh = Math.min(video.videoHeight - sy, h + (pad*2));
+    tCanvas.width = sw;
+    tCanvas.height = sh;
+    tCtx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
+    return tCanvas.toDataURL('image/jpeg', 0.85);
 }
 
-async function saveImage() {
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = video.videoWidth;
-    tempCanvas.height = video.videoHeight;
-    const tempCtx = tempCanvas.getContext('2d');
-    tempCtx.drawImage(video, 0, 0);
-
-    const imageData = tempCanvas.toDataURL('image/jpeg');
-    const timestamp = new Date().toISOString();
-
-    try {
-        const response = await fetch('/save_image', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                image: imageData,
-                timestamp: timestamp
-            })
-        });
-
-        if (response.ok) {
-            const result = await response.json();
-            addImageToGallery(result.filename, timestamp);
-            document.getElementById('savedCount').textContent = savedImages.length;
-        }
-    } catch (error) {
-        console.error('Error saving image:', error);
-    }
-}
-
-function addImageToGallery(filename, timestamp) {
-    savedImages.push({ filename, timestamp });
-
-    const gallery = document.getElementById('imageGallery');
-    const item = document.createElement('div');
-    item.className = 'gallery-item';
-    item.innerHTML = `
-        <img src="/saved_images/${filename}" alt="Detection">
-        <button class="delete-btn" onclick="deleteImage('${filename}')">×</button>
-        <div class="type-badge">${new Date(timestamp).toLocaleString('fa-IR')}</div>
+function addToGallery(id, imgData, score) {
+    const div = document.createElement('div');
+    div.className = 'person-card';
+    div.id = `person-${id}`;
+    div.innerHTML = `
+        <span class="update-badge">بهتر شد!</span>
+        <span class="score-tag">وضوح: ${(score*100).toFixed(0)}%</span>
+        <img src="${imgData}" id="img-${id}">
+        <div class="card-info">شناسه: ${id}</div>
     `;
-    gallery.insertBefore(item, gallery.firstChild);
+    els.gallery.prepend(div);
 }
 
-async function deleteImage(filename) {
-    try {
-        const response = await fetch(`/delete_image/${filename}`, {
-            method: 'DELETE'
-        });
-
-        if (response.ok) {
-            savedImages = savedImages.filter(img => img.filename !== filename);
-            document.getElementById('savedCount').textContent = savedImages.length;
-            loadSavedImages();
-        }
-    } catch (error) {
-        console.error('Error deleting image:', error);
+function updateGalleryImage(id, newImgData, score) {
+    const imgEl = document.getElementById(`img-${id}`);
+    const cardEl = document.getElementById(`person-${id}`);
+    if (imgEl && cardEl) {
+        imgEl.src = newImgData;
+        cardEl.querySelector('.score-tag').innerText = `وضوح: ${(score*100).toFixed(0)}%`;
+        cardEl.classList.add('updated');
+        setTimeout(() => cardEl.classList.remove('updated'), 2000);
     }
 }
 
-async function loadSavedImages() {
-    try {
-        const response = await fetch('/list_images');
-        const images = await response.json();
-        
-        const gallery = document.getElementById('imageGallery');
-        gallery.innerHTML = '';
-        
-        images.forEach(img => {
-            addImageToGallery(img.filename, img.timestamp);
-        });
-        
-        savedImages = images;
-        document.getElementById('savedCount').textContent = images.length;
-    } catch (error) {
-        console.error('Error loading images:', error);
-    }
-}
+document.getElementById('clearGallery').addEventListener('click', () => {
+    els.gallery.innerHTML = '';
+    trackedPersons = [];
+});
+window.onload = init;
+"""
 
-window.addEventListener('load', init);"""
-    
-    with open('static/js/main.js', 'w', encoding='utf-8') as f:
-        f.write(js_content)
-    print("✓ Created static/js/main.js")
-    
-    print("\n✅ Project structure created successfully!")
-    print("\nNext steps:")
-    print("1. Run: python app.py")
-    print("2. Open: http://localhost:5000")
+# ---------------------------------------------------------
+# نوشتن فایل‌ها
+# ---------------------------------------------------------
+with open(os.path.join(base_dir, "index.html"), "w", encoding="utf-8") as f:
+    f.write(html_content)
 
-if __name__ == "__main__":
-    create_project_structure()
+with open(os.path.join(css_dir, "style.css"), "w", encoding="utf-8") as f:
+    f.write(css_content)
+
+with open(os.path.join(js_dir, "app.js"), "w", encoding="utf-8") as f:
+    f.write(js_content)
+
+print(f"✅ اصلاح انجام شد: فاکتور فاصله حذف شد. پروژه در '{base_dir}' آماده است.")
