@@ -3,35 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>هوش مصنوعی موبایل - بدون سرور</title>
-    <link rel="stylesheet" href="assets/css/style.css">
+    <title>سیستم امنیتی دوربین</title>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🔮 استودیو هوشمند وب</h1>
-            <p>اجرای کامل روی موبایل شما (بدون ارسال به سرور)</p>
+            <h1>🔒 سیستم امنیتی دوربین</h1>
+            <div class="status" id="status">در حال بارگذاری...</div>
         </header>
 
-        <div class="card-grid">
-            <div class="card">
-                <div class="icon">👤</div>
-                <h2>تشخیص چهره</h2>
-                <p>تشخیص صورت و نقاط کلیدی مستقیماً در مرورگر.</p>
-                <a href="face.html" class="btn btn-primary">شروع ابزار چهره</a>
+        <div class="controls">
+            <button id="switchCamera" class="btn">🔄 تغییر دوربین</button>
+            <button id="startBtn" class="btn btn-primary">▶ شروع</button>
+            <button id="stopBtn" class="btn btn-danger">⏹ توقف</button>
+        </div>
+
+        <div class="video-container">
+            <video id="video" autoplay playsinline muted></video>
+            <canvas id="overlay"></canvas>
+        </div>
+
+        <div class="stats">
+            <div class="stat-item">
+                <span class="stat-label">افراد شناسایی شده:</span>
+                <span class="stat-value" id="totalPeople">0</span>
             </div>
-            
-            <div class="card">
-                <div class="icon">🎵</div>
-                <h2>پردازش صدا</h2>
-                <p>افزایش باس و شفافیت صدا با Web Audio API.</p>
-                <a href="audio.html" class="btn btn-secondary">شروع ابزار صدا</a>
+            <div class="stat-item">
+                <span class="stat-label">دوربین فعال:</span>
+                <span class="stat-value" id="currentCamera">جلو</span>
             </div>
         </div>
-        
-        <footer>
-            <p>نسخه: Client-Side v2.0 | طراحی شده برای سایت Test</p>
-        </footer>
+
+        <div class="gallery">
+            <h2>📸 گالری تصاویر</h2>
+            <div id="gallery" class="gallery-grid"></div>
+        </div>
     </div>
+
+    <audio id="alarm" loop>
+        <source src="sounds/alarm.mp3" type="audio/mpeg">
+    </audio>
+
+    <script src="js/libs/face-api.min.js"></script>
+    <script src="js/libs/tracking-min.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>
