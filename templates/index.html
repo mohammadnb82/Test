@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>دوربین نگهبان هوشمند</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🎥 دوربین نگهبان محلی</h1>
+        
+        <div class="controls">
+            <button id="startBtn" class="btn btn-primary">▶️ شروع دوربین</button>
+            <button id="stopBtn" class="btn btn-danger" disabled>⏹️ توقف دوربین</button>
+        </div>
+
+        <div class="settings-panel">
+            <h3>⚙️ تنظیمات</h3>
+            <div class="setting-group">
+                <label>
+                    <input type="checkbox" id="alarmToggle">
+                    🔊 فعال‌سازی آژیر
+                </label>
+            </div>
+            <div class="setting-group">
+                <label>
+                    <input type="checkbox" id="saveToggle">
+                    💾 ذخیره خودکار تصاویر
+                </label>
+            </div>
+            <div class="setting-group">
+                <label>
+                    حساسیت تشخیص:
+                    <input type="range" id="sensitivity" min="0.3" max="0.9" step="0.1" value="0.5">
+                    <span id="sensitivityValue">0.5</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="status-panel">
+            <div class="status-item">
+                <span class="status-label">وضعیت:</span>
+                <span id="systemStatus" class="status-value">غیرفعال</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">تعداد تشخیص:</span>
+                <span id="detectionCount" class="status-value">0</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">تصاویر ذخیره شده:</span>
+                <span id="savedCount" class="status-value">0</span>
+            </div>
+        </div>
+
+        <div class="video-container">
+            <video id="video" autoplay playsinline></video>
+            <canvas id="canvas"></canvas>
+        </div>
+
+        <div class="gallery">
+            <h3>📸 گالری تصاویر</h3>
+            <div id="imageGallery" class="gallery-grid"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet"></script>
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
