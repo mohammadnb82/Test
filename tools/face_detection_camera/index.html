@@ -3,47 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>دوربین نگهبان هوشمند</title>
+    <title>سیستم امنیتی آفلاین</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <div class="container">
+    <div class="app-container">
         <header>
-            <h1>🎥 دوربین نگهبان هوشمند</h1>
-            <div class="status" id="status">آماده به کار</div>
+            <h1>📷 سیستم پایش هوشمند (نسخه لوکال)</h1>
+            <p id="statusText" class="status-waiting">سیستم آماده است</p>
         </header>
 
-        <div class="controls">
-            <button id="startBtn" class="btn btn-primary">▶️ روشن کردن دوربین</button>
-            <button id="stopBtn" class="btn btn-danger" disabled>⏹️ خاموش</button>
-            
-            <div class="toggle-wrapper">
-                <label class="toggle">
-                    <input type="checkbox" id="alarmToggle">
-                    <span class="slider"></span>
-                    <span class="label-text">🔊 صدای آژیر</span>
-                </label>
+        <main>
+            <div class="camera-wrapper">
+                <video id="video" playsinline webkit-playsinline muted autoplay></video>
+                <canvas id="canvas"></canvas>
             </div>
-        </div>
 
-        <div class="video-wrapper">
-            <!-- ویژگی playsinline برای آیفون حیاتی است -->
-            <video id="video" playsinline webkit-playsinline muted autoplay></video>
-            <canvas id="canvas"></canvas>
-            <div class="overlay-msg" id="msg">...</div>
-        </div>
+            <div class="controls">
+                <button id="startBtn" class="btn btn-primary">شروع دوربین</button>
+                <button id="stopBtn" class="btn btn-danger" disabled>توقف</button>
+            </div>
+            
+            <div class="options">
+                <label><input type="checkbox" id="alarmToggle"> 🔊 آژیر</label>
+                <label><input type="checkbox" id="aiToggle" checked> 🧠 هوش مصنوعی</label>
+            </div>
 
-        <div class="logs">
-            <h3>📝 گزارش‌ها</h3>
-            <div id="logContainer"></div>
-            <button id="clearLogs" class="btn btn-small">پاک کردن لیست</button>
-        </div>
+            <div id="logs" class="logs"></div>
+        </main>
     </div>
 
-    <!-- کتابخانه‌های هوش مصنوعی -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet"></script>
+    <!-- بارگذاری فایل‌ها از پوشه خود برنامه (نه اینترنت) -->
+    <script src="js/libs/tf.min.js"></script>
+    <script src="js/libs/blazeface.min.js"></script>
+    <script src="js/libs/posenet.min.js"></script>
+    
     <script src="js/app.js"></script>
 </body>
 </html>
