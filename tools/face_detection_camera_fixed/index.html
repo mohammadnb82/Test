@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>شکارگر چهره (بر اساس وضوح)</title>
+    <link rel="stylesheet" href="css/style.css">
+    
+    <!-- کتابخانه‌های لوکال -->
+    <script src="js/tf.min.js"></script>
+    <script src="js/blazeface.min.js"></script>
+    <script src="js/posenet.min.js"></script>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="top-bar">
+        <h3>📷 سیستم تشخیص هوشمند</h3>
+        <div class="status-indicator waiting" id="statusBadge">در حال لود...</div>
+    </div>
+
+    <div class="camera-wrapper">
+        <video id="video" playsinline muted autoplay></video>
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <div class="controls-area">
+        <div class="row">
+            <select id="cameraSelect" class="input-select">
+                <option value="" disabled selected>انتخاب دوربین...</option>
+            </select>
+            <button id="startBtn" class="btn btn-primary" disabled>شروع</button>
+            <button id="stopBtn" class="btn btn-danger" disabled>توقف</button>
+        </div>
+        
+        <div class="row settings-row">
+            <label class="toggle-label">
+                <span>🔔 آژیر</span>
+                <input type="checkbox" id="alarmToggle" checked>
+                <span class="toggle-switch"></span>
+            </label>
+            <button id="clearGallery" class="btn btn-sm">پاکسازی</button>
+        </div>
+        <div class="info-text">ملاک جایگزینی: فقط وضوح اجزای صورت (فاصله مهم نیست)</div>
+    </div>
+
+    <div class="gallery-section">
+        <h4>لیست افراد (بهترین تصویر)</h4>
+        <div id="galleryGrid" class="gallery-grid"></div>
+    </div>
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
