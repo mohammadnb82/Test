@@ -6,7 +6,7 @@ let saveEnabled = false;
 let alarmEnabled = false;
 let audioContext;
 let lastAlarmTime = 0;
-const ALARM_COOLDOWN = 1000; // 1 ثانیه فاصله بین آژیرها
+const ALARM_COOLDOWN = 1000;
 
 // بارگذاری تصاویر
 function loadSavedItems() {
@@ -17,14 +17,12 @@ function loadSavedItems() {
     }
 }
 
-// ذخیره تصاویر
 function saveItems() {
     if (saveEnabled) {
         localStorage.setItem('detectedItems', JSON.stringify(detectedItems));
     }
 }
 
-// پاک کردن تصاویر
 function clearItems() {
     if (confirm('آیا مطمئن هستید که می‌خواهید تمام تصاویر را پاک کنید؟')) {
         detectedItems = [];
@@ -34,7 +32,6 @@ function clearItems() {
     }
 }
 
-// ایجاد صدای آژیر
 function createAlarmSound() {
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
 }
@@ -62,14 +59,12 @@ function playAlarm() {
     oscillator.stop(audioContext.currentTime + 0.5);
 }
 
-// محاسبه فاصله
 function calculateDistance(point1, point2) {
     const dx = point1.x - point2.x;
     const dy = point1.y - point2.y;
     return Math.sqrt(dx * dx + dy * dy);
 }
 
-// بررسی شباهت
 function areItemsSimilar(item1, item2, threshold = 100) {
     if (item1.type !== item2.type) return false;
     
@@ -82,7 +77,6 @@ function areItemsSimilar(item1, item2, threshold = 100) {
     return distance < threshold && sizeRatio < 0.5;
 }
 
-// پردازش چهره
 function processFace(predictions) {
     predictions.forEach(prediction => {
         const box = {
@@ -98,10 +92,8 @@ function processFace(predictions) {
             y: box.y + box.height / 2
         };
         
-        // پخش آژیر
         playAlarm();
         
-        // کپچر عکس
         const itemCanvas = document.createElement('canvas');
         const itemCtx = itemCanvas.getContext('2d');
         
@@ -117,7 +109,6 @@ function processFace(predictions) {
         
         const itemImage = itemCanvas.toDataURL('image/jpeg', 0.8);
         
-        // یافتن آیتم مشابه
         let matchedIndex = -1;
         for (let i = 0; i < detectedItems.length; i++) {
             if (areItemsSimilar({ type: 'face', center, area }, detectedItems[i])) {
@@ -154,15 +145,13 @@ function processFace(predictions) {
     });
 }
 
-// پردازش بدن
 function processPose(poses) {
     poses.forEach(pose => {
-        if (pose.score < 0.3) return; // حداقل اطمینان
+        if (pose.score < 0.3) return;
         
         const keypoints = pose.keypoints.filter(kp => kp.score > 0.3);
-        if (keypoints.length < 3) return; // حداقل 3 نقطه برای تشخیص بدن
+        if (keypoints.length < 3) return;
         
-        // محاسبه کادر محدوده بدن
         const xs = keypoints.map(kp => kp.position.x);
         const ys = keypoints.map(kp => kp.position.y);
         const minX = Math.min(...xs);
@@ -183,10 +172,8 @@ function processPose(poses) {
             y: box.y + box.height / 2
         };
         
-        // پخش آژیر
         playAlarm();
         
-        // کپچر عکس
         const itemCanvas = document.createElement('canvas');
         const itemCtx = itemCanvas.getContext('2d');
         
@@ -202,7 +189,6 @@ function processPose(poses) {
         
         const itemImage = itemCanvas.toDataURL('image/jpeg', 0.8);
         
-        // یافتن آیتم مشابه
         let matchedIndex = -1;
         for (let i = 0; i < detectedItems.length; i++) {
             if (areItemsSimilar({ type: 'body', center, area }, detectedItems[i])) {
@@ -239,7 +225,6 @@ function processPose(poses) {
     });
 }
 
-// نمایش تصاویر
 function updateItemsDisplay() {
     const container = document.getElementById('facesContainer');
     container.innerHTML = '';
@@ -247,9 +232,11 @@ function updateItemsDisplay() {
     detectedItems.forEach((item, index) => {
         const icon = item.type === 'face' ? '👤' : '🚶';
         const label = item.type === 'face' ? 'چهره' : 'بدن';
+        const bgColor = item.type === 'face' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)';
         
         const card = document.createElement('div');
         card.className = 'face-card';
+        card.style.background = bgColor;
         card.innerHTML = `
             <img src="${item.image}" alt="${label} ${index + 1}">
             <div class="face-id">${icon} ${label} شماره ${index + 1}</div>
@@ -260,26 +247,40 @@ function updateItemsDisplay() {
     });
 }
 
-// شروع دوربین
+// شروع دوربین با مدیریت خطا بهتر
 async function startCamera() {
     try {
+        document.getElementById('status').textContent = 'درخواست دسترسی...';
+        document.getElementById('status').style.background = '#FF9800';
+        
+        // چک کردن پشتیبانی مرورگر
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error('مرورگر شما از دوربین پشتیبانی نمی‌کند');
+        }
+        
+        // درخواست دسترسی به دوربین
         const stream = await navigator.mediaDevices.getUserMedia({ 
             video: { 
                 facingMode: 'environment',
                 width: { ideal: 1280 },
                 height: { ideal: 720 }
-            } 
+            },
+            audio: false
         });
         
         video.srcObject = stream;
         
-        video.onloadedmetadata = () => {
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-        };
+        await new Promise((resolve) => {
+            video.onloadedmetadata = () => {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                resolve();
+            };
+        });
         
-        document.getElementById('status').textContent = 'در حال بارگذاری مدل‌ها...';
-        document.getElementById('status').style.background = '#FF9800';
+        await video.play();
+        
+        document.getElementById('status').textContent = 'بارگذاری مدل‌ها...';
         
         // بارگذاری مدل‌ها
         faceModel = await blazeface.load();
@@ -300,13 +301,26 @@ async function startCamera() {
         
     } catch (error) {
         console.error('خطا:', error);
-        alert('دسترسی به دوربین امکان‌پذیر نیست.');
-        document.getElementById('status').textContent = '❌ خطا';
+        
+        let errorMessage = 'خطا در دسترسی به دوربین';
+        
+        if (error.name === 'NotAllowedError') {
+            errorMessage = 'لطفاً دسترسی به دوربین را تایید کنید';
+        } else if (error.name === 'NotFoundError') {
+            errorMessage = 'دوربینی یافت نشد';
+        } else if (error.name === 'NotReadableError') {
+            errorMessage = 'دوربین در حال استفاده است';
+        } else if (error.message) {
+            errorMessage = error.message;
+        }
+        
+        alert('⚠️ ' + errorMessage + '\n\nتوجه: این برنامه فقط با HTTPS کار می‌کند.\nلطفاً از مرورگر Chrome یا Safari استفاده کنید.');
+        
+        document.getElementById('status').textContent = '❌ ' + errorMessage;
         document.getElementById('status').style.background = '#f44336';
     }
 }
 
-// توقف دوربین
 function stopCamera() {
     isDetecting = false;
     
@@ -324,15 +338,11 @@ function stopCamera() {
     document.getElementById('detectionInfo').textContent = '';
 }
 
-// تشخیص انسان (چهره + بدن)
 async function detectHumans() {
     if (!isDetecting) return;
     
     try {
-        // تشخیص چهره
         const facePredictions = await faceModel.estimateFaces(video, false);
-        
-        // تشخیص بدن
         const pose = await poseModel.estimateSinglePose(video, {
             flipHorizontal: false
         });
@@ -341,7 +351,6 @@ async function detectHumans() {
         
         let totalDetections = 0;
         
-        // رسم چهره‌ها
         if (facePredictions.length > 0) {
             totalDetections += facePredictions.length;
             
@@ -363,14 +372,12 @@ async function detectHumans() {
             processFace(facePredictions);
         }
         
-        // رسم بدن
         if (pose.score > 0.3) {
             const keypoints = pose.keypoints.filter(kp => kp.score > 0.3);
             
             if (keypoints.length >= 3) {
                 totalDetections += 1;
                 
-                // رسم نقاط
                 keypoints.forEach(kp => {
                     ctx.beginPath();
                     ctx.arc(kp.position.x, kp.position.y, 5, 0, 2 * Math.PI);
@@ -378,7 +385,6 @@ async function detectHumans() {
                     ctx.fill();
                 });
                 
-                // رسم کادر محدوده
                 const xs = keypoints.map(kp => kp.position.x);
                 const ys = keypoints.map(kp => kp.position.y);
                 const minX = Math.min(...xs);
@@ -398,7 +404,6 @@ async function detectHumans() {
             }
         }
         
-        // به‌روزرسانی اطلاعات
         if (totalDetections > 0) {
             document.getElementById('detectionInfo').textContent = 
                 `🎯 ${totalDetections} مورد شناسایی شد`;
@@ -413,11 +418,19 @@ async function detectHumans() {
     requestAnimationFrame(detectHumans);
 }
 
-// راه‌اندازی
 window.addEventListener('load', () => {
     video = document.getElementById('video');
     canvas = document.getElementById('canvas');
     ctx = canvas.getContext('2d');
+    
+    // چک کردن HTTPS
+    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+        alert('⚠️ هشدار: این برنامه نیاز به HTTPS دارد.\n\nلطفاً به آدرس زیر بروید:\nhttps://' + window.location.host + window.location.pathname);
+        document.getElementById('status').textContent = '❌ نیاز به HTTPS';
+        document.getElementById('status').style.background = '#f44336';
+        document.getElementById('startBtn').disabled = true;
+        return;
+    }
     
     createAlarmSound();
     
