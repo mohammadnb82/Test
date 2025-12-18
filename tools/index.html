@@ -1,17 +1,4 @@
-import os
-
-def create_main_dashboard():
-    # مسیر ذخیره فایل ایندکس اصلی (در ریشه پوشه tools)
-    base_dir = "tools"
-    # اطمینان از وجود پوشه tools
-    if not os.path.exists(base_dir):
-        os.makedirs(base_dir)
-        
-    file_path = os.path.join(base_dir, "index.html")
-
-    # محتوای HTML به صورت هاردکد شده و بدون حلقه، طبق دستور شما
-    # استایل‌ها برای نمایش شبکه‌ای و زیبا در موبایل تنظیم شده‌اند
-    html_content = """<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -144,13 +131,3 @@ def create_main_dashboard():
 
 </body>
 </html>
-"""
-
-    with open(file_path, "w", encoding="utf-8") as f:
-        f.write(html_content)
-    
-    print(f"✅ فایل داشبورد ساخته شد: {file_path}")
-    print("نکته: لینک ابزار اول به صورت خودکار به پوشه پروژه فعلی متصل شد.")
-
-if __name__ == "__main__":
-    create_main_dashboard()
