@@ -1,108 +1,141 @@
+
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>دوربین هوشمند</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>دوربین تشخیص حرکت</title>
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #000;
-            color: #fff;
-            font-family: sans-serif;
+        body { 
+            margin: 0; 
+            background: #000; 
+            color: white; 
+            font-family: sans-serif; 
             overflow: hidden; /* جلوگیری از اسکرول */
             display: flex;
             flex-direction: column;
-            align-items: center;
             height: 100vh;
         }
-
-        /* کانتینر اصلی ویدیو */
-        #video-container {
+        
+        /* کانتینر ویدیو */
+        #camera-container {
             position: relative;
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #111;
+        }
+        
+        video {
             width: 100%;
-            max-width: 640px; /* حداکثر عرض VGA */
-            margin-top: 10px;
+            height: 100%;
+            object-fit: cover; /* پر کردن صفحه */
         }
 
-        /* ویدیو و بوم نقاشی روی هم سوار می‌شوند */
-        video, canvas {
-            width: 100%;
-            height: auto;
-            display: block;
-            border-radius: 8px;
-        }
-
+        /* بوم نقاشی برای دیباگ یا افکت (مخفی یا روی ویدیو) */
         canvas {
             position: absolute;
             top: 0;
             left: 0;
-            z-index: 10;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
         }
 
-        /* کنترل پنل پایین صفحه */
+        /* کنترل‌ها در پایین صفحه */
         #controls {
-            position: fixed;
-            bottom: 20px;
-            left: 0;
-            right: 0;
-            text-align: center;
-            z-index: 20;
+            padding: 15px;
+            background: rgba(20, 20, 20, 0.9);
+            border-top: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
 
-        .btn {
-            background-color: rgba(255, 255, 255, 0.2);
-            border: 1px solid #fff;
-            color: #fff;
-            padding: 12px 24px;
+        /* استایل اسلایدر */
+        .slider-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        
+        input[type=range] {
+            flex-grow: 1;
+            height: 25px;
+        }
+
+        button {
+            padding: 10px 20px;
             font-size: 16px;
-            border-radius: 30px;
-            cursor: pointer;
-            backdrop-filter: blur(5px);
-            margin: 0 5px;
-        }
-
-        .btn:active {
-            background-color: rgba(255, 255, 255, 0.5);
+            border-radius: 25px;
+            border: none;
+            background: #333;
+            color: white;
+            border: 1px solid #555;
         }
 
         #status {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 5px 10px;
-            border-radius: 4px;
             font-size: 12px;
-            color: #0f0;
-            z-index: 30;
+            text-align: center;
+            color: #888;
+            margin-bottom: 5px;
+        }
+
+        /* شاخص بصری مقدار حرکت */
+        #motion-bar-container {
+            width: 100%;
+            height: 5px;
+            background: #333;
+            margin-bottom: 10px;
+            position: relative;
+        }
+        #motion-bar {
+            height: 100%;
+            background: #00ff00;
+            width: 0%;
+            transition: width 0.1s;
+        }
+        #threshold-marker {
+            position: absolute;
+            top: -2px;
+            bottom: -2px;
+            width: 2px;
+            background: red;
+            left: 50%; /* پیش‌فرض */
+            z-index: 2;
         }
     </style>
 </head>
 <body>
 
-    <!-- نمایش وضعیت سیستم -->
-    <div id="status">در حال راه‌اندازی...</div>
+    <div id="status">در حال آماده‌سازی...</div>
 
-    <div id="video-container">
-        <!-- ویدیو مخفی نیست، چون می‌خواهیم ببینیمش -->
-        <!-- playsinline برای پخش در iOS ضروری است -->
-        <video id="video" playsinline autoplay muted></video>
-        <!-- بوم نقاشی برای رسم کادرهای تشخیص -->
+    <div id="camera-container">
+        <video id="video" autoplay playsinline muted></video>
+        <!-- کانواس برای پردازش تصویر (مخفی نیست چون شاید بخواهیم مناطق حرکت را نشان دهیم) -->
         <canvas id="output"></canvas>
     </div>
 
     <div id="controls">
-        <button class="btn" id="switch-camera">🔄 چرخش دوربین</button>
+        <!-- نمایشگر گرافیکی مقدار حرکت -->
+        <div id="motion-bar-container">
+            <div id="motion-bar"></div>
+            <div id="threshold-marker"></div>
+        </div>
+
+        <div class="slider-container">
+            <span>حساسیت:</span>
+            <input type="range" id="sensitivity" min="1" max="100" value="50">
+            <span id="sens-val">50%</span>
+        </div>
+
+        <div style="text-align: center; margin-top:5px;">
+            <button id="switch-camera">🔄 چرخش دوربین</button>
+        </div>
     </div>
 
-    <!-- بارگذاری کتابخانه‌های آفلاین -->
-    <!-- ترتیب مهم است: اول تنسورفلو، بعد مدل -->
-    <script src="assets/js/tf.min.js"></script>
-    <script src="assets/js/blazeface.min.js"></script>
-
-    <!-- کد اصلی برنامه -->
     <script src="app.js"></script>
 </body>
 </html>
