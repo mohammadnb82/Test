@@ -1,16 +1,4 @@
-import os
-
-def create_tool_interface():
-    # مسیر ابزار تشخیص حرکت
-    tool_dir = "tools/doorbin-tashkhis-harekat"
-    
-    # اطمینان از وجود پوشه (هرچند باید باشد)
-    if not os.path.exists(tool_dir):
-        os.makedirs(tool_dir)
-
-    file_path = os.path.join(tool_dir, "index.html")
-
-    html_content = """<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -118,12 +106,3 @@ def create_tool_interface():
     <script src="app.js"></script>
 </body>
 </html>
-"""
-
-    with open(file_path, "w", encoding="utf-8") as f:
-        f.write(html_content)
-
-    print(f"✅ فایل رابط کاربری ({file_path}) ساخته شد.")
-
-if __name__ == "__main__":
-    create_tool_interface()
