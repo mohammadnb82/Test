@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>دوربین هوشمند</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            color: #fff;
+            font-family: sans-serif;
+            overflow: hidden; /* جلوگیری از اسکرول */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+        }
+
+        /* کانتینر اصلی ویدیو */
+        #video-container {
+            position: relative;
+            width: 100%;
+            max-width: 640px; /* حداکثر عرض VGA */
+            margin-top: 10px;
+        }
+
+        /* ویدیو و بوم نقاشی روی هم سوار می‌شوند */
+        video, canvas {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 8px;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 10;
+        }
+
+        /* کنترل پنل پایین صفحه */
+        #controls {
+            position: fixed;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            z-index: 20;
+        }
+
+        .btn {
+            background-color: rgba(255, 255, 255, 0.2);
+            border: 1px solid #fff;
+            color: #fff;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 30px;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            margin: 0 5px;
+        }
+
+        .btn:active {
+            background-color: rgba(255, 255, 255, 0.5);
+        }
+
+        #status {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #0f0;
+            z-index: 30;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- نمایش وضعیت سیستم -->
+    <div id="status">در حال راه‌اندازی...</div>
+
+    <div id="video-container">
+        <!-- ویدیو مخفی نیست، چون می‌خواهیم ببینیمش -->
+        <!-- playsinline برای پخش در iOS ضروری است -->
+        <video id="video" playsinline autoplay muted></video>
+        <!-- بوم نقاشی برای رسم کادرهای تشخیص -->
+        <canvas id="output"></canvas>
+    </div>
+
+    <div id="controls">
+        <button class="btn" id="switch-camera">🔄 چرخش دوربین</button>
+    </div>
+
+    <!-- بارگذاری کتابخانه‌های آفلاین -->
+    <!-- ترتیب مهم است: اول تنسورفلو، بعد مدل -->
+    <script src="assets/js/tf.min.js"></script>
+    <script src="assets/js/blazeface.min.js"></script>
+
+    <!-- کد اصلی برنامه -->
+    <script src="app.js"></script>
+</body>
+</html>
