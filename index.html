@@ -3,50 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>سیستم امنیتی دوربین</title>
-    <link rel="stylesheet" href="css/style.css">
+    <title>سامانه هوشمند</title>
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --bg-color: #f8fafc;
+            --text-color: #1e293b;
+            --white: #ffffff;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            text-align: center;
+        }
+
+        .container {
+            background: var(--white);
+            padding: 40px 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 500px;
+        }
+
+        h1 {
+            color: var(--text-color);
+            margin-bottom: 10px;
+            font-size: 2rem;
+        }
+
+        p.subtitle {
+            color: #64748b;
+            margin-bottom: 40px;
+            font-size: 1.1rem;
+        }
+
+        .button-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .btn {
+            display: block;
+            text-decoration: none;
+            padding: 18px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        /* دکمه اصلی: ورود به ابزارها */
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: var(--white);
+            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-primary:hover {
+            background-color: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.4);
+        }
+
+        /* دکمه‌های فرعی */
+        .btn-secondary {
+            background-color: var(--white);
+            color: var(--text-color);
+            border: 2px solid #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .footer {
+            margin-top: 30px;
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+    </style>
 </head>
 <body>
+
     <div class="container">
-        <header>
-            <h1>🔒 سیستم امنیتی دوربین</h1>
-            <div class="status" id="status">در حال بارگذاری...</div>
-        </header>
+        <h1>خوش آمدید</h1>
+        <p class="subtitle">پرتال جامع خدمات هوشمند</p>
 
-        <div class="controls">
-            <button id="switchCamera" class="btn">🔄 تغییر دوربین</button>
-            <button id="startBtn" class="btn btn-primary">▶ شروع</button>
-            <button id="stopBtn" class="btn btn-danger">⏹ توقف</button>
+        <div class="button-stack">
+            <!-- لینک به پوشه tools -->
+            <a href="tools/index.html" class="btn btn-primary">
+                🚀 ورود به بخش ابزارها
+            </a>
+
+            <a href="#" class="btn btn-secondary">درباره ما</a>
+            <a href="#" class="btn btn-secondary">ارتباط با پشتیبانی</a>
         </div>
 
-        <div class="video-container">
-            <video id="video" autoplay playsinline muted></video>
-            <canvas id="overlay"></canvas>
-        </div>
-
-        <div class="stats">
-            <div class="stat-item">
-                <span class="stat-label">افراد شناسایی شده:</span>
-                <span class="stat-value" id="totalPeople">0</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-label">دوربین فعال:</span>
-                <span class="stat-value" id="currentCamera">جلو</span>
-            </div>
-        </div>
-
-        <div class="gallery">
-            <h2>📸 گالری تصاویر</h2>
-            <div id="gallery" class="gallery-grid"></div>
+        <div class="footer">
+            نسخه ۱.۰.۰
         </div>
     </div>
 
-    <audio id="alarm" loop>
-        <source src="sounds/alarm.mp3" type="audio/mpeg">
-    </audio>
-
-    <script src="js/libs/face-api.min.js"></script>
-    <script src="js/libs/tracking-min.js"></script>
-    <script src="js/app.js"></script>
 </body>
 </html>
