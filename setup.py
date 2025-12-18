@@ -1,30 +1,36 @@
 import os
 
-def create_folder_with_gitkeep():
-    # مسیرها
+def create_web_ready_folder():
     parent_folder = 'tools'
-    target_folder_name = 'دوربین تشخیص حرکت'
-    keep_file_name = '.gitkeep'  # فایلی که باعث می‌شود پوشه در گیت دیده شود
+    # نام فینگلیش و استاندارد برای URL (با خط تیره)
+    target_folder_name = 'doorbin-tashkhis-harekat'
+    file_name = 'README.md'
     
+    # مسیر کامل
     current_dir = os.getcwd()
     folder_path = os.path.join(current_dir, parent_folder, target_folder_name)
-    file_path = os.path.join(folder_path, keep_file_name)
+    file_path = os.path.join(folder_path, file_name)
 
     try:
-        # ۱. ساخت پوشه (اگر نباشد)
+        # ۱. ساخت پوشه فینگلیش
         os.makedirs(folder_path, exist_ok=True)
-        print(f"✅ پوشه '{target_folder_name}' ساخته شد.")
+        print(f"✅ پوشه '{target_folder_name}' با موفقیت ساخته شد.")
 
-        # ۲. ساخت فایل نگهدارنده داخل پوشه
-        if not os.path.exists(file_path):
-            with open(file_path, 'w') as f:
-                pass # ساخت فایل خالی
-            print(f"✅ فایل مخفی '{keep_file_name}' داخل پوشه ساخته شد (تا گیت پوشه را ببیند).")
-        else:
-            print(f"ℹ️ فایل '{keep_file_name}' از قبل وجود دارد.")
+        # ۲. ساخت فایل README.md
+        # محتوایی داخلش می‌نویسیم تا خالی نباشد
+        content = (
+            f"# {target_folder_name}\n\n"
+            "محل قرارگیری فایل‌های پروژه دوربین تشخیص حرکت.\n"
+            "This folder contains the Motion Detection Camera project files.\n"
+        )
+        
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+            
+        print(f"✅ فایل '{file_name}' ایجاد شد (پوشه اکنون توسط گیت شناسایی می‌شود).")
 
     except OSError as e:
-        print(f"❌ خطا: {e}")
+        print(f"❌ خطا در عملیات: {e}")
 
 if __name__ == "__main__":
-    create_folder_with_gitkeep()
+    create_web_ready_folder()
