@@ -1,10 +1,4 @@
-import os
 
-def create_simple_camera_app():
-    tool_dir = "tools/doorbin-tashkhis-harekat"
-    file_path = os.path.join(tool_dir, "app.js")
-
-    js_content = """
 // انتخاب المان‌های صفحه
 const video = document.getElementById('video');
 const switchBtn = document.getElementById('switch-camera');
@@ -76,12 +70,3 @@ switchBtn.addEventListener('click', () => {
 window.addEventListener('load', () => {
     startCamera();
 });
-"""
-
-    with open(file_path, "w", encoding="utf-8") as f:
-        f.write(js_content)
-
-    print(f"✅ فایل app.js برای تست ساده دوربین ساخته شد.")
-
-if __name__ == "__main__":
-    create_simple_camera_app()
