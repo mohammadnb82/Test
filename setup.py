@@ -1,140 +1,129 @@
 import os
 
-def overwrite_root_index():
-    filename = "index.html"
+def create_tool_interface():
+    # مسیر ابزار تشخیص حرکت
+    tool_dir = "tools/doorbin-tashkhis-harekat"
     
-    # محتوای HTML جدید (صفحه اصلی سایت)
+    # اطمینان از وجود پوشه (هرچند باید باشد)
+    if not os.path.exists(tool_dir):
+        os.makedirs(tool_dir)
+
+    file_path = os.path.join(tool_dir, "index.html")
+
     html_content = """<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>سامانه هوشمند</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>دوربین هوشمند</title>
     <style>
-        :root {
-            --primary-color: #3b82f6;
-            --bg-color: #f8fafc;
-            --text-color: #1e293b;
-            --white: #ffffff;
-        }
-
         body {
-            font-family: system-ui, -apple-system, sans-serif;
-            background-color: var(--bg-color);
             margin: 0;
             padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            text-align: center;
-        }
-
-        .container {
-            background: var(--white);
-            padding: 40px 30px;
-            border-radius: 20px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-            width: 90%;
-            max-width: 500px;
-        }
-
-        h1 {
-            color: var(--text-color);
-            margin-bottom: 10px;
-            font-size: 2rem;
-        }
-
-        p.subtitle {
-            color: #64748b;
-            margin-bottom: 40px;
-            font-size: 1.1rem;
-        }
-
-        .button-stack {
+            background-color: #000;
+            color: #fff;
+            font-family: sans-serif;
+            overflow: hidden; /* جلوگیری از اسکرول */
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            align-items: center;
+            height: 100vh;
+        }
+
+        /* کانتینر اصلی ویدیو */
+        #video-container {
+            position: relative;
+            width: 100%;
+            max-width: 640px; /* حداکثر عرض VGA */
+            margin-top: 10px;
+        }
+
+        /* ویدیو و بوم نقاشی روی هم سوار می‌شوند */
+        video, canvas {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 8px;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 10;
+        }
+
+        /* کنترل پنل پایین صفحه */
+        #controls {
+            position: fixed;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            z-index: 20;
         }
 
         .btn {
-            display: block;
-            text-decoration: none;
-            padding: 18px;
-            border-radius: 12px;
-            font-weight: bold;
-            font-size: 1.1rem;
-            transition: transform 0.2s, box-shadow 0.2s;
+            background-color: rgba(255, 255, 255, 0.2);
+            border: 1px solid #fff;
+            color: #fff;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 30px;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            margin: 0 5px;
         }
 
-        /* دکمه اصلی: ورود به ابزارها */
-        .btn-primary {
-            background-color: var(--primary-color);
-            color: var(--white);
-            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.4);
+        .btn:active {
+            background-color: rgba(255, 255, 255, 0.5);
         }
 
-        .btn-primary:hover {
-            background-color: #2563eb;
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.4);
-        }
-
-        /* دکمه‌های فرعی */
-        .btn-secondary {
-            background-color: var(--white);
-            color: var(--text-color);
-            border: 2px solid #e2e8f0;
-        }
-
-        .btn-secondary:hover {
-            border-color: var(--primary-color);
-            color: var(--primary-color);
-        }
-
-        .footer {
-            margin-top: 30px;
-            font-size: 0.9rem;
-            color: #94a3b8;
+        #status {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #0f0;
+            z-index: 30;
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>خوش آمدید</h1>
-        <p class="subtitle">پرتال جامع خدمات هوشمند</p>
+    <!-- نمایش وضعیت سیستم -->
+    <div id="status">در حال راه‌اندازی...</div>
 
-        <div class="button-stack">
-            <!-- لینک به پوشه tools -->
-            <a href="tools/index.html" class="btn btn-primary">
-                🚀 ورود به بخش ابزارها
-            </a>
-
-            <a href="#" class="btn btn-secondary">درباره ما</a>
-            <a href="#" class="btn btn-secondary">ارتباط با پشتیبانی</a>
-        </div>
-
-        <div class="footer">
-            نسخه ۱.۰.۰
-        </div>
+    <div id="video-container">
+        <!-- ویدیو مخفی نیست، چون می‌خواهیم ببینیمش -->
+        <!-- playsinline برای پخش در iOS ضروری است -->
+        <video id="video" playsinline autoplay muted></video>
+        <!-- بوم نقاشی برای رسم کادرهای تشخیص -->
+        <canvas id="output"></canvas>
     </div>
 
+    <div id="controls">
+        <button class="btn" id="switch-camera">🔄 چرخش دوربین</button>
+    </div>
+
+    <!-- بارگذاری کتابخانه‌های آفلاین -->
+    <!-- ترتیب مهم است: اول تنسورفلو، بعد مدل -->
+    <script src="assets/js/tf.min.js"></script>
+    <script src="assets/js/blazeface.min.js"></script>
+
+    <!-- کد اصلی برنامه -->
+    <script src="app.js"></script>
 </body>
 </html>
 """
 
-    # بررسی وجود فایل قدیمی صرفاً جهت اطلاع
-    if os.path.exists(filename):
-        print(f"⚠️ فایل {filename} موجود است. محتوای قبلی در حال پاک‌سازی است...")
-    else:
-        print(f"✨ فایل {filename} وجود نداشت. فایل جدید ساخته می‌شود...")
-
-    # حالت 'w' (Write) فایل قبلی را خالی کرده و محتوای جدید را می‌نویسد
-    with open(filename, "w", encoding="utf-8") as f:
+    with open(file_path, "w", encoding="utf-8") as f:
         f.write(html_content)
-    
-    print(f"✅ فایل {filename} با موفقیت به‌روزرسانی شد.")
+
+    print(f"✅ فایل رابط کاربری ({file_path}) ساخته شد.")
 
 if __name__ == "__main__":
-    overwrite_root_index()
+    create_tool_interface()
