@@ -1,83 +1,37 @@
 import os
-import shutil
 
-def clean_project():
-    # مسیر جاری (ریشه پروژه)
-    root_dir = os.getcwd()
+def create_tools_structure():
+    # مسیر پوشه و فایل
+    folder_name = 'tools'
+    file_name = 'keep'
     
-    # نام همین فایل اسکریپت تا خودش را پاک نکند
-    script_name = os.path.basename(__file__)
+    # آدرس کامل
+    current_dir = os.getcwd()
+    folder_path = os.path.join(current_dir, folder_name)
+    file_path = os.path.join(folder_path, file_name)
 
-    # لیست سفید ریشه (چیزهایی که نباید پاک شوند)
-    # تغییر مهم: اضافه شدن .git به لیست
-    root_whitelist = [
-        '.git',       # <--- این پوشه حیاتی است و نباید پاک شود
-        '.github',
-        'tools',
-        'index.html',
-        script_name.lower()
-    ]
-
-    # لیست سفید داخل پوشه tools
-    tools_whitelist = ['keep']
-
-    print("🧹 شروع عملیات پاک‌سازی ایمن (حفظ .git)...")
-
-    # -----------------------------------------------------
-    # 1. پاک‌سازی ریشه پروژه (Root)
-    # -----------------------------------------------------
-    for item_name in os.listdir(root_dir):
-        item_path = os.path.join(root_dir, item_name)
-        lower_name = item_name.lower()
-
-        # بررسی استثنا برای فایل‌های Readme
-        is_readme = lower_name.startswith('readme')
-        
-        # اگر جزو لیست سفید یا ریدمی است، رد شو
-        if lower_name in root_whitelist or is_readme:
-            print(f"   ✅ نگهداری شد: {item_name}")
-            continue
-
-        # حذف آیتم (فایل یا پوشه)
+    # ۱. ساخت پوشه tools
+    if not os.path.exists(folder_path):
         try:
-            if os.path.isfile(item_path) or os.path.islink(item_path):
-                os.remove(item_path)
-            elif os.path.isdir(item_path):
-                shutil.rmtree(item_path)
-            print(f"   🗑️ حذف شد: {item_name}")
-        except Exception as e:
-            print(f"   ❌ خطا در حذف {item_name}: {e}")
-
-    # -----------------------------------------------------
-    # 2. پاک‌سازی داخل پوشه tools
-    # -----------------------------------------------------
-    tools_dir = os.path.join(root_dir, 'tools')
-    
-    if os.path.exists(tools_dir) and os.path.isdir(tools_dir):
-        print("\n📂 در حال پاک‌سازی پوشه tools...")
-        for item_name in os.listdir(tools_dir):
-            item_path = os.path.join(tools_dir, item_name)
-            lower_name = item_name.lower()
-
-            # اگر نام فایل keep است، نگه دار
-            if lower_name in tools_whitelist:
-                print(f"   ✅ نگهداری شد (در tools): {item_name}")
-                continue
-
-            # حذف آیتم‌های داخل tools
-            try:
-                if os.path.isfile(item_path) or os.path.islink(item_path):
-                    os.remove(item_path)
-                elif os.path.isdir(item_path):
-                    shutil.rmtree(item_path)
-                print(f"   🗑️ حذف شد (از tools): {item_name}")
-            except Exception as e:
-                print(f"   ❌ خطا در حذف {item_name}: {e}")
+            os.makedirs(folder_path)
+            print(f"✅ پوشه '{folder_name}' با موفقیت ساخته شد.")
+        except OSError as e:
+            print(f"❌ خطا در ساخت پوشه: {e}")
+            return
     else:
-        print("\n⚠️ پوشه tools پیدا نشد.")
+        print(f"ℹ️ پوشه '{folder_name}' از قبل وجود دارد.")
 
-    print("\n✨ عملیات پاک‌سازی تمام شد.")
+    # ۲. ساخت فایل keep
+    if not os.path.exists(file_path):
+        try:
+            # ایجاد یک فایل خالی
+            with open(file_path, 'w') as fp:
+                pass 
+            print(f"✅ فایل '{file_name}' داخل پوشه ساخته شد.")
+        except IOError as e:
+            print(f"❌ خطا در ساخت فایل: {e}")
+    else:
+        print(f"ℹ️ فایل '{file_name}' از قبل وجود دارد.")
 
 if __name__ == "__main__":
-    # اجرای مستقیم بدون نیاز به ورودی کاربر
-    clean_project()
+    create_tools_structure()
