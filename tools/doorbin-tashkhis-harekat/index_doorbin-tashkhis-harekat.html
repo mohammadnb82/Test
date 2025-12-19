@@ -18,7 +18,6 @@
             overflow: hidden;
         }
 
-        /* ناحیه ویدیو */
         .video-container {
             width: 100%;
             max-width: 600px;
@@ -33,7 +32,6 @@
         video { width: 100%; height: 100%; object-fit: cover; }
         canvas { display: none; }
         
-        /* لایه هشدار قرمز روی کل تصویر */
         #alarmLayer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(255, 0, 0, 0.4);
@@ -41,7 +39,6 @@
             box-shadow: inset 0 0 50px red;
         }
 
-        /* پنل کنترل */
         .control-panel {
             width: 100%;
             max-width: 600px;
@@ -51,112 +48,105 @@
             box-sizing: border-box;
         }
 
-        /* بخش گراف حرکت */
         .motion-graph-wrapper {
             position: relative;
             margin-bottom: 5px;
         }
         
         .motion-track {
-            height: 20px;
-            background: #333;
+            height: 24px;
+            background: #2c2c2e;
             position: relative;
-            border-radius: 3px;
+            border-radius: 4px;
             overflow: hidden;
-            /* جهت را صریحاً RTL می‌کنیم تا 0 سمت راست باشد */
-            direction: rtl; 
+            border: 1px solid #333;
+            direction: rtl; /* 0 سمت راست */
         }
         
-        /* نوار سبز میزان حرکت */
         .motion-fill {
             height: 100%;
             width: 0%;
-            background: #4caf50; /* سبز */
+            background: #32d74b; /* سبز روشن اپل */
             transition: width 0.1s linear;
-            /* چون در RTL هستیم، خود به خود از راست پر می‌شود */
         }
 
-        /* خط قرمز آستانه */
         .threshold-line {
             position: absolute;
             top: 0;
             bottom: 0;
-            width: 2px;
-            background: #ff3b30; /* قرمز */
+            width: 3px;
+            background: #ff453a; /* قرمز روشن */
             z-index: 10;
-            /* تغییر مهم: انیمیشن روی right */
-            transition: right 0.1s; 
+            box-shadow: 0 0 4px rgba(255, 69, 58, 0.8);
+            transition: right 0.1s; /* حرکت نرم از راست */
         }
 
-        /* اعداد زیر نوار (0 تا 100) */
         .scale-numbers {
             display: flex;
             justify-content: space-between;
-            color: #888;
-            font-size: 10px;
-            margin-top: 2px;
+            color: #8e8e93;
+            font-size: 11px;
+            margin-top: 4px;
             padding: 0 2px;
-            direction: ltr; /* اعداد را چپ به راست می‌چینیم تا 100 سمت چپ و 0 سمت راست بیفتد */
+            direction: ltr; /* چیدمان اعداد 100 چپ - 0 راست */
         }
 
-        /* نمایش اعداد آستانه و حرکت */
         .stats-row {
             display: flex;
             justify-content: space-between;
-            margin: 10px 0;
-            font-size: 14px;
+            margin: 12px 0;
+            font-size: 15px;
             font-weight: bold;
         }
-        .stat-item { display: flex; align-items: center; gap: 5px; }
-        .text-red { color: #ff3b30; }
-        .text-green { color: #4caf50; }
+        .stat-item { display: flex; align-items: center; gap: 6px; }
+        .text-red { color: #ff453a; }
+        .text-green { color: #32d74b; }
 
-        /* اسلایدر آبی */
         .slider-container {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 15px;
+            gap: 12px;
+            margin-bottom: 20px;
         }
-        .slider-label { font-size: 14px; color: #ccc; min-width: 60px; }
+        .slider-label { font-size: 14px; color: #aeaeb2; min-width: 60px; }
+        
         input[type=range] {
             flex-grow: 1;
-            height: 4px;
-            border-radius: 2px;
-            background: #333;
+            height: 6px;
+            border-radius: 3px;
+            background: #3a3a3c;
             outline: none;
             -webkit-appearance: none;
-            direction: ltr; /* اسلایدر استاندارد */
+            direction: ltr;
         }
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 20px;
-            height: 20px;
+            width: 24px;
+            height: 24px;
             background: white;
             border-radius: 50%;
             cursor: pointer;
-            margin-top: -8px; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            margin-top: -9px; 
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
         }
         input[type=range]::-webkit-slider-runnable-track {
             width: 100%;
-            height: 4px;
-            background: #007aff; /* آبی */
-            border-radius: 2px;
+            height: 6px;
+            background: #0a84ff;
+            border-radius: 3px;
         }
 
-        /* دکمه‌ها */
         .buttons-row {
             display: flex;
-            gap: 10px;
+            gap: 12px;
         }
 
         .btn {
-            padding: 12px;
+            padding: 14px;
             border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: bold;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
             cursor: pointer;
             color: white;
             display: flex;
@@ -164,24 +154,31 @@
             justify-content: center;
             gap: 8px;
             flex: 1;
+            transition: transform 0.1s;
         }
+        .btn:active { transform: scale(0.98); }
 
         .btn-cam { background: #3a3a3c; } 
-        .btn-cam:active { background: #555; }
-
+        
         .btn-siren { background: #3a3a3c; color: #aaa; border: 1px solid #444; }
         .btn-siren.active { 
-            background: #ff3b30; 
+            background: #ff453a; 
             color: white; 
-            border-color: #ff3b30;
-            box-shadow: 0 0 15px rgba(255, 59, 48, 0.4);
+            border: none;
+            animation: pulse-red 1.5s infinite;
+        }
+
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(255, 69, 58, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 69, 58, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 69, 58, 0); }
         }
 
         .back-link {
-            margin-top: 20px;
-            color: #666;
+            margin-top: 25px;
+            color: #636366;
             text-decoration: none;
-            font-size: 12px;
+            font-size: 13px;
         }
     </style>
 </head>
@@ -195,33 +192,28 @@
 
     <div class="control-panel">
         
-        <!-- گراف حرکت با خط کش و خط آستانه -->
         <div class="motion-graph-wrapper">
             <div class="motion-track">
                 <div id="motionFill" class="motion-fill"></div>
-                <!-- خط قرمز حالا بر اساس right پوزیشن می‌گیرد -->
-                <div id="threshLine" class="threshold-line" style="right: 50%;"></div>
+                <!-- خط قرمز با right تنظیم می‌شود تا با اعداد 0 راست هماهنگ باشد -->
+                <div id="threshLine" class="threshold-line" style="right: 20%;"></div>
             </div>
-            <!-- اعداد: 100 سمت چپ، 0 سمت راست -->
             <div class="scale-numbers">
                 <span>100</span><span>80</span><span>60</span><span>40</span><span>20</span><span>0</span>
             </div>
         </div>
 
-        <!-- اعداد دقیق -->
         <div class="stats-row">
-            <span class="stat-item text-red">آستانه: <span id="threshText">50</span></span>
+            <span class="stat-item text-red">آستانه: <span id="threshText">20</span></span>
             <span class="stat-item text-green">حرکت: <span id="motionText">0</span></span>
         </div>
 
-        <!-- اسلایدر حساسیت -->
         <div class="slider-container">
             <span class="slider-label">حساسیت:</span>
-            <!-- مقدار پیش‌فرض 20 برای تست راحتی -->
+            <!-- مقدار پیش‌فرض کمتر برای تست راحت‌تر -->
             <input type="range" id="sensitivitySlider" min="1" max="100" value="20">
         </div>
 
-        <!-- دکمه‌ها -->
         <div class="buttons-row">
             <button class="btn btn-cam" onclick="switchCamera()">
                 🔄 چرخش دوربین
@@ -235,7 +227,6 @@
     <a href="../index_tools.html" class="back-link">بازگشت به منوی ابزارها</a>
 
     <script>
-        // عناصر صفحه
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
@@ -248,55 +239,69 @@
         const slider = document.getElementById('sensitivitySlider');
         const sirenBtn = document.getElementById('sirenBtn');
 
-        // متغیرهای منطقی
         let stream = null;
         let facingMode = 'environment';
         let lastFrameData = null;
         let isSirenActive = false;
+        
+        // متغیرهای صوتی جدید (بدون خش)
         let audioCtx = null;
         let oscillator = null;
-        let alarmTimeout;
+        let gainNode = null;
+        let isBeeping = false;
 
-        // --- 1. تنظیمات صدا ---
+        // --- 1. سیستم صوتی پیشرفته (بدون نویز) ---
         function initAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // ایجاد یک اسیلاتور دائمی
+                oscillator = audioCtx.createOscillator();
+                gainNode = audioCtx.createGain();
+                
+                oscillator.type = 'square'; // صدای هشدار قوی
+                oscillator.frequency.value = 800; // فرکانس پایه
+                
+                // در ابتدا صدا قطع است (Gain = 0)
+                gainNode.gain.value = 0;
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                oscillator.start();
             }
             if (audioCtx.state === 'suspended') audioCtx.resume();
         }
 
-        function playBeep() {
-            if (oscillator) return;
-            initAudio();
-            oscillator = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
-            
-            oscillator.type = 'sawtooth';
-            oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
-            oscillator.frequency.linearRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
-            oscillator.frequency.linearRampToValueAtTime(800, audioCtx.currentTime + 0.2);
-
-            gainNode.gain.value = 0.2;
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-            oscillator.start();
+        function startBeep() {
+            if (gainNode && !isBeeping) {
+                // افزایش نرم صدا برای جلوگیری از "تق"
+                gainNode.gain.setTargetAtTime(0.3, audioCtx.currentTime, 0.05);
+                
+                // افکت آژیر (تغییر فرکانس)
+                oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+                oscillator.frequency.linearRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
+                
+                isBeeping = true;
+            }
         }
 
         function stopBeep() {
-            if (oscillator) {
-                try { oscillator.stop(); oscillator.disconnect(); } catch(e){}
-                oscillator = null;
+            if (gainNode && isBeeping) {
+                // کاهش نرم صدا
+                gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+                isBeeping = false;
             }
         }
 
         function toggleSiren() {
             isSirenActive = !isSirenActive;
-            initAudio();
+            initAudio(); // فعال‌سازی زمینه صوتی
+            
             if (isSirenActive) {
                 sirenBtn.classList.add('active');
                 sirenBtn.innerHTML = "🔔 آژیر فعال";
-                playBeep(); setTimeout(stopBeep, 200); 
+                // تست کوتاه صدا
+                startBeep(); setTimeout(stopBeep, 150);
             } else {
                 sirenBtn.classList.remove('active');
                 sirenBtn.innerHTML = "🔕 آژیر خاموش";
@@ -304,18 +309,15 @@
             }
         }
 
-        // --- 2. منطق اسلایدر و آستانه (اصلاح جهت حرکت) ---
+        // --- 2. تنظیمات آستانه ---
         slider.addEventListener('input', updateThreshold);
 
         function updateThreshold() {
             const val = parseInt(slider.value);
             threshText.innerText = val;
-            
-            // اصلاح مهم: استفاده از right به جای left
-            // چون نمودار ما از راست (0) شروع می‌شود
-            threshLine.style.right = val + '%'; 
+            threshLine.style.right = val + '%'; // حرکت از راست
         }
-        updateThreshold(); 
+        updateThreshold();
 
         // --- 3. دوربین ---
         async function startCamera() {
@@ -326,7 +328,7 @@
                 });
                 video.srcObject = stream;
             } catch (err) {
-                alert("خطا در دوربین: " + err);
+                alert("دسترسی به دوربین داده نشد.");
             }
         }
 
@@ -335,11 +337,11 @@
             startCamera();
         }
 
-        // --- 4. پردازش تصویر ---
+        // --- 4. پردازش تصویر (با حساسیت بالا) ---
         function processFrame() {
             if (video.readyState === 4) {
-                const w = 50; 
-                const h = 50;
+                const w = 64; // کمی افزایش کیفیت تحلیل
+                const h = 48;
                 canvas.width = w; canvas.height = h;
                 
                 ctx.drawImage(video, 0, 0, w, h);
@@ -350,49 +352,45 @@
                     const oldData = lastFrameData.data;
                     let diffScore = 0;
 
+                    // حلقه روی پیکسل‌ها
                     for (let i = 0; i < data.length; i += 4) {
-                        const diff = Math.abs(data[i] - oldData[i]) +
-                                     Math.abs(data[i+1] - oldData[i+1]) +
-                                     Math.abs(data[i+2] - oldData[i+2]);
-                        if (diff > 80) diffScore++;
+                        const rDiff = Math.abs(data[i] - oldData[i]);
+                        const gDiff = Math.abs(data[i+1] - oldData[i+1]);
+                        const bDiff = Math.abs(data[i+2] - oldData[i+2]);
+                        
+                        // حساسیت تشخیص پیکسل را بالا بردیم (از 80 به 30 رساندیم)
+                        if ((rDiff + gDiff + bDiff) > 30) {
+                            diffScore++;
+                        }
                     }
 
-                    // عدد 400 حساسیت کلی است
-                    let motionVal = Math.min(Math.floor((diffScore / 400) * 100), 100);
+                    // فرمول جدید و بسیار حساس برای محاسبه درصد
+                    // تعداد کل پیکسل‌ها حدود 3000 است. 
+                    // تقسیم بر 5 می‌کنیم تا با تغییرات کم هم درصد بالا برود.
+                    let motionVal = Math.min(Math.floor(diffScore / 5), 100);
                     
+                    // جلوگیری از نویزهای خیلی ریز (زیر 2 درصد را صفر کن)
+                    if (motionVal < 2) motionVal = 0;
+
                     motionText.innerText = motionVal;
                     motionFill.style.width = motionVal + '%';
 
-                    // مقایسه با آستانه
                     const thresholdVal = parseInt(slider.value);
                     
+                    // بررسی آژیر
                     if (motionVal > thresholdVal) {
-                        triggerAlarm();
+                        alarmLayer.style.display = "block";
+                        motionFill.style.background = "#ff453a"; // نوار قرمز می‌شود
+                        if (isSirenActive) startBeep();
                     } else {
-                        stopAlarmVisuals();
+                        alarmLayer.style.display = "none";
+                        motionFill.style.background = "#32d74b"; // نوار سبز می‌شود
+                        stopBeep();
                     }
                 }
                 lastFrameData = currentData;
             }
             requestAnimationFrame(processFrame);
-        }
-
-        function triggerAlarm() {
-            alarmLayer.style.display = "block";
-            motionFill.style.background = "#ff3b30";
-            
-            if (isSirenActive) {
-                playBeep();
-            }
-
-            clearTimeout(alarmTimeout);
-            alarmTimeout = setTimeout(stopAlarmVisuals, 200);
-        }
-
-        function stopAlarmVisuals() {
-            alarmLayer.style.display = "none";
-            motionFill.style.background = "#4caf50";
-            stopBeep();
         }
 
         startCamera();
