@@ -1,72 +1,235 @@
 import os
 
-def synchronize_visual_and_logic():
-    js_path = "tools/doorbin-tashkhis-harekat/app.js"
-    
+def apply_precision_mode():
+    tool_dir = "tools/doorbin-tashkhis-harekat"
+    html_path = os.path.join(tool_dir, "index.html")
+    js_path = os.path.join(tool_dir, "app.js")
+
+    # 1. HTML & CSS: اضافه کردن خط‌کش مدرج و حذف انیمیشن
+    html_content = """
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>دوربین تشخیص حرکت دقیق</title>
+    <style>
+        body { 
+            margin: 0; 
+            background: #000; 
+            color: white; 
+            font-family: monospace; /* فونت منو-اسپیس برای خوانایی اعداد */
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        #camera-container {
+            position: relative;
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #111;
+            box-sizing: border-box; /* برای محاسبه دقیق بردر */
+        }
+        
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        canvas {
+            display: none; /* کانواس پردازشی دیده نشود */
+        }
+
+        #controls {
+            padding: 10px 15px;
+            background: #222;
+            border-top: 2px solid #444;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        /* ناحیه نوار و خط‌کش */
+        .meter-wrapper {
+            position: relative;
+            margin-bottom: 5px;
+            padding-top: 5px;
+        }
+
+        #motion-bar-container {
+            width: 100%;
+            height: 15px; /* کمی ضخیم‌تر */
+            background: #333;
+            position: relative;
+            direction: ltr; /* جهت چپ به راست */
+            border: 1px solid #555;
+        }
+
+        #motion-bar {
+            height: 100%;
+            background: #00ff00;
+            width: 0%;
+            /* transition حذف شد تا لگ نداشته باشد */
+        }
+
+        #threshold-marker {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: red;
+            left: 0%;
+            z-index: 5;
+            transform: translateX(-50%); /* مرکز کردن خط روی عدد دقیق */
+            box-shadow: 0 0 4px red;
+        }
+
+        /* خط‌کش اعداد */
+        #ruler {
+            display: flex;
+            justify-content: space-between;
+            direction: ltr;
+            font-size: 10px;
+            color: #aaa;
+            margin-top: 2px;
+            padding: 0 2px; /* برای تراز شدن با لبه‌ها */
+        }
+
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        
+        input[type=range] {
+            flex-grow: 1;
+            height: 30px;
+            direction: ltr;
+            cursor: pointer;
+        }
+
+        #debug-info {
+            text-align: center;
+            font-size: 14px;
+            margin-top: 5px;
+            padding: 5px;
+            background: #000;
+            border-radius: 4px;
+            border: 1px solid #333;
+        }
+
+        button {
+            padding: 8px 15px;
+            border-radius: 5px;
+            border: 1px solid #555;
+            background: #333;
+            color: white;
+            margin: 0 auto;
+            display: block;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="camera-container">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="output"></canvas>
+    </div>
+
+    <div id="controls">
+        <!-- نوار حرکت و خط قرمز -->
+        <div class="meter-wrapper">
+            <div id="motion-bar-container">
+                <div id="motion-bar"></div>
+                <div id="threshold-marker"></div>
+            </div>
+            <!-- اعداد راهنما -->
+            <div id="ruler">
+                <span>0</span>
+                <span>20</span>
+                <span>40</span>
+                <span>60</span>
+                <span>80</span>
+                <span>100</span>
+            </div>
+        </div>
+
+        <!-- نمایشگر دقیق اعداد -->
+        <div id="debug-info">
+            حرکت: <span id="motion-val-text" style="color: #0f0; font-weight:bold;">0</span> | 
+            حد آستانه: <span id="thresh-val-text" style="color: #f55; font-weight:bold;">50</span>
+        </div>
+
+        <!-- اسلایدر کنترل -->
+        <div class="slider-row">
+            <span>تنظیم حد مجاز:</span>
+            <input type="range" id="sensitivity-slider" min="0" max="100" value="50" step="1">
+        </div>
+
+        <button id="switch-camera">🔄 چرخش دوربین</button>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+"""
+
+    # 2. JavaScript: منطق همگام‌سازی شده و خطی
     js_content = """
 const video = document.getElementById('video');
 const canvas = document.getElementById('output');
 const ctx = canvas.getContext('2d');
-const statusDiv = document.getElementById('status');
-const sensitivityInput = document.getElementById('sensitivity');
-const sensitivityVal = document.getElementById('sens-val');
 const motionBar = document.getElementById('motion-bar');
 const thresholdMarker = document.getElementById('threshold-marker');
-const cameraContainer = document.getElementById('camera-container');
+const slider = document.getElementById('sensitivity-slider');
+const motionText = document.getElementById('motion-val-text');
+const threshText = document.getElementById('thresh-val-text');
+const container = document.getElementById('camera-container');
+const debugInfo = document.getElementById('debug-info');
 
 let stream = null;
 let facingMode = 'environment';
 let previousFrameData = null;
 
-// ضریب تقویت حرکت: تغییرات پیکسلی معمولاً کم هستند. 
-// این ضریب باعث می‌شود حرکت‌های کوچک هم روی نوار سبز دیده شوند.
-const MOTION_AMPLIFY_FACTOR = 10; 
+// ضریب حساسیت: این عدد باعث می‌شود تغییرات کم پیکسل، روی نوار ۰ تا ۱۰۰ دیده شوند.
+// اگر محیط خیلی نویز دارد این عدد را کم کنید، اگر خیلی ساکن است زیاد کنید.
+const AMPLIFICATION = 15; 
 
-// تنظیمات اولیه
-updateThresholdSystem();
+// 1. همگام‌سازی اولیه اسلایدر و مارکر قرمز
+updateThreshold();
 
-// وقتی اسلایدر تغییر می‌کند
-sensitivityInput.addEventListener('input', (e) => {
-    updateThresholdSystem();
-});
+slider.addEventListener('input', updateThreshold);
 
-function updateThresholdSystem() {
-    // مقدار اسلایدر مستقیماً به عنوان "حد آستانه" (Threshold) عمل می‌کند
-    const val = parseInt(sensitivityInput.value);
-    
-    // نمایش عدد به کاربر
-    sensitivityVal.textContent = val;
-    
-    // حرکت خط قرمز دقیقاً به همان درصد اسلایدر
+function updateThreshold() {
+    const val = parseInt(slider.value);
+    // خط قرمز دقیقاً روی همان درصدی می‌رود که اسلایدر است
     thresholdMarker.style.left = val + '%';
+    threshText.textContent = val;
 }
 
 async function startCamera() {
-    if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-    }
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    
     try {
-        statusDiv.textContent = 'در حال راه‌اندازی...';
         stream = await navigator.mediaDevices.getUserMedia({
-            video: { 
-                facingMode: facingMode,
-                width: { ideal: 640 }, // رزولوشن مناسب برای سرعت بالا
-                height: { ideal: 480 }
-            },
+            video: { facingMode: facingMode, width: 320, height: 240 }, // رزولوشن پایین برای سرعت
             audio: false
         });
         video.srcObject = stream;
-        
         video.onloadedmetadata = () => {
-            statusDiv.textContent = 'آماده تشخیص حرکت';
-            // کانواس بسیار کوچک برای پردازش فوق‌سریع
-            canvas.width = 64; 
-            canvas.height = 48;
+            canvas.width = 64; // پردازش روی تصویر کوچک
+            canvas.height = 48; 
             detectMotion();
         };
-    } catch (err) {
-        console.error(err);
-        statusDiv.textContent = 'خطا: ' + err.message;
+    } catch (e) {
+        alert("خطا در دوربین: " + e.message);
     }
 }
 
@@ -78,57 +241,53 @@ document.getElementById('switch-camera').addEventListener('click', () => {
 function detectMotion() {
     if (video.paused || video.ended) return;
 
-    // 1. رسم تصویر روی کانواس کوچک
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    // 2. استخراج داده‌های پیکسل
     const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const data = frame.data;
-    const length = data.length;
     
     let changedPixels = 0;
-
+    
+    // الگوریتم مقایسه پیکسل
     if (previousFrameData) {
-        for (let i = 0; i < length; i += 4) {
-            // محاسبه تفاوت رنگی با فریم قبلی
-            const rDiff = Math.abs(data[i] - previousFrameData[i]);
-            const gDiff = Math.abs(data[i+1] - previousFrameData[i+1]);
-            const bDiff = Math.abs(data[i+2] - previousFrameData[i+2]);
+        for (let i = 0; i < data.length; i += 4) {
+            // میانگین تفاوت RGB
+            const diff = (Math.abs(data[i] - previousFrameData[i]) +
+                          Math.abs(data[i+1] - previousFrameData[i+1]) +
+                          Math.abs(data[i+2] - previousFrameData[i+2])) / 3;
             
-            // اگر تغییر رنگ پیکسل بیشتر از حد نویز بود (30)
-            if (rDiff + gDiff + bDiff > 60) {
+            // اگر تغییر پیکسل بیشتر از 20 (نویز جزئی) بود
+            if (diff > 20) {
                 changedPixels++;
             }
         }
     }
+    
+    previousFrameData = new Uint8ClampedArray(data); // کپی فریم برای دور بعد
 
-    // ذخیره فریم فعلی
-    previousFrameData = new Uint8ClampedArray(data);
-
-    // 3. محاسبه درصد واقعی تغییرات
+    // محاسبه درصد تغییرات
     const totalPixels = canvas.width * canvas.height;
-    const rawMotionPercent = (changedPixels / totalPixels) * 100;
+    let rawPercent = (changedPixels / totalPixels) * 100;
+    
+    // تبدیل به مقیاس 0 تا 100 برای نمایش
+    let displayValue = Math.floor(rawPercent * AMPLIFICATION);
+    if (displayValue > 100) displayValue = 100;
 
-    // 4. اعمال ضریب تقویت برای نمایش در نوار سبز (0 تا 100)
-    let displayValue = rawMotionPercent * MOTION_AMPLIFY_FACTOR;
-    if (displayValue > 100) displayValue = 100; // سقف 100
-
-    // 5. به‌روزرسانی نوار سبز
+    // --- بروزرسانی UI ---
+    
+    // 1. نوار سبز (دقیقا برابر عدد محاسبه شده)
     motionBar.style.width = displayValue + '%';
+    motionText.textContent = displayValue;
 
-    // 6. مقایسه با اسلایدر (منطق اصلی)
-    // دقیقاً همان عددی که خط قرمز روی آن است را می‌خوانیم
-    const thresholdSetting = parseInt(sensitivityInput.value);
+    // 2. خواندن مقدار حد مجاز (از اسلایدر)
+    const limit = parseInt(slider.value);
 
-    // اگر "مقدار نوار سبز" از "مکان خط قرمز" بیشتر شد -> هشدار
-    if (displayValue > thresholdSetting) {
-        cameraContainer.style.border = "5px solid red";
-        statusDiv.style.color = "red";
-        statusDiv.textContent = `حرکت: ${Math.round(displayValue)} (آستانه: ${thresholdSetting})`;
+    // 3. شرط قرمز شدن
+    if (displayValue >= limit) {
+        container.style.border = "6px solid red";
+        debugInfo.style.background = "#500"; // قرمز شدن پس‌زمینه اعداد
     } else {
-        cameraContainer.style.border = "none";
-        statusDiv.style.color = "#888";
-        statusDiv.textContent = "در حال نظارت...";
+        container.style.border = "none";
+        debugInfo.style.background = "#000";
     }
 
     requestAnimationFrame(detectMotion);
@@ -136,10 +295,14 @@ function detectMotion() {
 
 startCamera();
 """
+
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(html_content)
+    
     with open(js_path, "w", encoding="utf-8") as f:
         f.write(js_content)
 
-    print("✅ فایل app.js آپدیت شد: هماهنگی ۱۰۰٪ بین مکان خط قرمز و لحظه آلارم.")
+    print("✅ اصلاحات انجام شد:\n1. خط‌کش مدرج (0-100) اضافه شد.\n2. انیمیشن تاخیری حذف شد.\n3. نمایش عددی دقیق برای مقایسه اضافه شد.")
 
 if __name__ == "__main__":
-    synchronize_visual_and_logic()
+    apply_precision_mode()
