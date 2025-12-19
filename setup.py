@@ -1,18 +1,20 @@
 import os
 
+# Define the target path (Keeping the Finglish name as requested)
 target_file_path = "tools/doorbin-tashkhis-harekat/index_doorbin-tashkhis-harekat.html"
 
-html_content = """<!DOCTYPE html>
-<html lang="fa" dir="rtl">
+# HTML Content: English UI (LTR) for perfect slider/graph alignment
+html_content = r"""<!DOCTYPE html>
+<html lang="en" dir="ltr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>دوربین هوشمند - نسخه نهایی</title>
+    <title>Smart Motion Camera</title>
     <style>
         body { 
             background-color: #121212; 
             color: white; 
-            font-family: system-ui, sans-serif; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
             display: flex; 
             flex-direction: column; 
             align-items: center; 
@@ -64,14 +66,14 @@ html_content = """<!DOCTYPE html>
             border-radius: 4px;
             overflow: hidden;
             border: 1px solid #333;
-            direction: rtl; /* مبدا (0) سمت راست */
         }
         
+        /* Green bar fills from Left to Right (LTR standard) */
         .motion-fill {
             height: 100%;
             width: 0%;
             background: #32d74b;
-            transition: width 0.05s linear; /* واکنش سریع‌تر */
+            transition: width 0.05s linear;
         }
 
         .threshold-line {
@@ -82,7 +84,7 @@ html_content = """<!DOCTYPE html>
             background: #ff453a;
             z-index: 10;
             box-shadow: 0 0 4px rgba(255, 69, 58, 0.8);
-            /* right توسط اسکریپت کنترل می‌شود */
+            /* Logic: 'left' property will be controlled by JS */
         }
 
         .scale-numbers {
@@ -92,7 +94,6 @@ html_content = """<!DOCTYPE html>
             font-size: 11px;
             margin-top: 4px;
             padding: 0 2px;
-            direction: ltr; /* عدد 100 چپ، 0 راست */
         }
 
         .stats-row {
@@ -112,9 +113,8 @@ html_content = """<!DOCTYPE html>
             gap: 12px;
             margin-bottom: 20px;
         }
-        .slider-label { font-size: 14px; color: #aeaeb2; min-width: 60px; }
+        .slider-label { font-size: 14px; color: #aeaeb2; min-width: 80px; }
         
-        /* استایل اسلایدر با جهت راست‌چین */
         input[type=range] {
             flex-grow: 1;
             height: 6px;
@@ -122,7 +122,6 @@ html_content = """<!DOCTYPE html>
             background: #3a3a3c;
             outline: none;
             -webkit-appearance: none;
-            direction: rtl; /* کلید حل مشکل معکوس بودن */
         }
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none;
@@ -198,35 +197,37 @@ html_content = """<!DOCTYPE html>
         <div class="motion-graph-wrapper">
             <div class="motion-track">
                 <div id="motionFill" class="motion-fill"></div>
-                <div id="threshLine" class="threshold-line" style="right: 20%;"></div>
+                <!-- Logic changed: Uses 'left' because we are now LTR -->
+                <div id="threshLine" class="threshold-line" style="left: 20%;"></div>
             </div>
             <div class="scale-numbers">
-                <span>100</span><span>80</span><span>60</span><span>40</span><span>20</span><span>0</span>
+                <!-- Correct LTR order: 0 on Left, 100 on Right -->
+                <span>0</span><span>20</span><span>40</span><span>60</span><span>80</span><span>100</span>
             </div>
         </div>
 
         <div class="stats-row">
-            <span class="stat-item text-red">آستانه: <span id="threshText">20</span></span>
-            <span class="stat-item text-green">حرکت: <span id="motionText">0</span></span>
+            <span class="stat-item text-red">Threshold: <span id="threshText">20</span></span>
+            <span class="stat-item text-green">Motion: <span id="motionText">0</span></span>
         </div>
 
         <div class="slider-container">
-            <span class="slider-label">حساسیت:</span>
-            <!-- مقدار مینیمم 1 و ماکزیمم 100 -->
+            <span class="slider-label">Sensitivity:</span>
             <input type="range" id="sensitivitySlider" min="1" max="100" value="20">
         </div>
 
         <div class="buttons-row">
             <button class="btn btn-cam" onclick="switchCamera()">
-                🔄 چرخش دوربین
+                🔄 Rotate Cam
             </button>
             <button id="sirenBtn" class="btn btn-siren" onclick="toggleSiren()">
-                🔕 آژیر خاموش
+                🔕 Siren OFF
             </button>
         </div>
     </div>
 
-    <a href="../index_tools.html" class="back-link">بازگشت به منوی ابزارها</a>
+    <!-- Back link is English but structure remains -->
+    <a href="../index_tools.html" class="back-link">← Back to Tools</a>
 
     <script>
         const video = document.getElementById('video');
@@ -246,7 +247,7 @@ html_content = """<!DOCTYPE html>
         let lastFrameData = null;
         let isSirenActive = false;
         
-        // سیستم صوتی
+        // Audio System
         let audioCtx = null;
         let oscillator = null;
         let gainNode = null;
@@ -288,25 +289,24 @@ html_content = """<!DOCTYPE html>
             initAudio();
             if (isSirenActive) {
                 sirenBtn.classList.add('active');
-                sirenBtn.innerHTML = "🔔 آژیر فعال";
-                startBeep(); setTimeout(stopBeep, 150); // تست صدا
+                sirenBtn.innerHTML = "🔔 Siren ON";
+                startBeep(); setTimeout(stopBeep, 150);
             } else {
                 sirenBtn.classList.remove('active');
-                sirenBtn.innerHTML = "🔕 آژیر خاموش";
+                sirenBtn.innerHTML = "🔕 Siren OFF";
                 stopBeep();
             }
         }
 
-        // تنظیمات اسلایدر
         slider.addEventListener('input', updateThreshold);
 
         function updateThreshold() {
             const val = parseInt(slider.value);
             threshText.innerText = val;
-            // چون اسلایدر RTL است، عدد کم (راست) یعنی right کم. عدد زیاد (چپ) یعنی right زیاد.
-            threshLine.style.right = val + '%';
+            // Key Change for English LTR: use 'left' instead of 'right'
+            threshLine.style.left = val + '%';
         }
-        updateThreshold(); // مقداردهی اولیه
+        updateThreshold();
 
         async function startCamera() {
             if (stream) stream.getTracks().forEach(t => t.stop());
@@ -316,7 +316,8 @@ html_content = """<!DOCTYPE html>
                 });
                 video.srcObject = stream;
             } catch (err) {
-                alert("دسترسی دوربین لازم است");
+                console.log("Camera Error: " + err);
+                alert("Please enable camera access.");
             }
         }
 
@@ -327,7 +328,6 @@ html_content = """<!DOCTYPE html>
 
         function processFrame() {
             if (video.readyState === 4) {
-                // رزولوشن کم برای پردازش سریع
                 const w = 64; 
                 const h = 48;
                 canvas.width = w; canvas.height = h;
@@ -340,25 +340,21 @@ html_content = """<!DOCTYPE html>
                     const oldData = lastFrameData.data;
                     let changedPixels = 0;
                     
-                    // حلقه بررسی پیکسل‌ها
                     for (let i = 0; i < data.length; i += 4) {
                         const rDiff = Math.abs(data[i] - oldData[i]);
                         const gDiff = Math.abs(data[i+1] - oldData[i+1]);
                         const bDiff = Math.abs(data[i+2] - oldData[i+2]);
                         
-                        // کاهش آستانه به 15 برای تشخیص حرکت در نور کم (ماشین/شب)
+                        // Night Vision Sensitivity
                         if ((rDiff + gDiff + bDiff) > 15) {
                             changedPixels++;
                         }
                     }
 
-                    // محاسبه درصد واقعی
-                    // کل پیکسل‌ها = 3072
                     const totalPixels = w * h;
                     let motionPercent = (changedPixels / totalPixels) * 100;
                     
-                    // تقویت ضریب برای نمایش بهتر (حرکت کوچک هم دیده شود)
-                    // ضرب در 8 می‌کنیم تا حساسیت بصری بالا رود
+                    // High Sensitivity Multiplier
                     let motionVal = Math.floor(motionPercent * 8); 
                     
                     if (motionVal > 100) motionVal = 100;
@@ -394,9 +390,7 @@ html_content = """<!DOCTYPE html>
 try:
     with open(target_file_path, "w", encoding="utf-8") as f:
         f.write(html_content)
-    print("✅ اصلاحات نهایی انجام شد:")
-    print("1. جهت اسلایدر اصلاح شد: کشیدن به چپ = حرکت خط قرمز به چپ.")
-    print("2. مشکل عدد 0 حل شد: حساسیت دید در شب فعال شد.")
-    print("3. خط سبز حالا با کوچکترین حرکت پر می‌شود.")
+    print("Success: File updated to English UI (LTR).")
+    print("Features: Standard LTR Slider/Graph (Left=0), Finglish Names kept.")
 except Exception as e:
-    print(f"❌ خطا: {
+    print("Error updating file: " + str(e))
