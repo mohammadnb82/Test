@@ -1,80 +1,85 @@
 import os
 
-def apply_precision_mode():
-    tool_dir = "tools/doorbin-tashkhis-harekat"
-    html_path = os.path.join(tool_dir, "index.html")
-    js_path = os.path.join(tool_dir, "app.js")
-
-    # 1. HTML & CSS: اضافه کردن خط‌کش مدرج و حذف انیمیشن
+def fix_mobile_layout():
+    html_path = "tools/doorbin-tashkhis-harekat/index.html"
+    
     html_content = """
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>دوربین تشخیص حرکت دقیق</title>
     <style>
+        * { box-sizing: border-box; }
+
         body { 
             margin: 0; 
+            padding: 0;
             background: #000; 
             color: white; 
-            font-family: monospace; /* فونت منو-اسپیس برای خوانایی اعداد */
-            overflow: hidden;
+            font-family: system-ui, -apple-system, sans-serif;
+            overflow: hidden; /* جلوگیری از اسکرول صفحه */
             display: flex;
             flex-direction: column;
-            height: 100vh;
+            /* استفاده از dvh برای حل مشکل نوار آدرس سافاری در آیفون */
+            height: 100dvh; 
         }
         
+        /* کانتینر دوربین: مهمترین بخش */
         #camera-container {
             position: relative;
-            flex-grow: 1;
+            flex: 1; /* تمام فضای خالی را پر کن */
+            min-height: 0; /* حیاتی: اجازه می‌دهد ویدیو در صورت کمبود جا کوچک شود */
             display: flex;
             justify-content: center;
             align-items: center;
             background: #111;
-            box-sizing: border-box; /* برای محاسبه دقیق بردر */
+            overflow: hidden;
         }
         
         video {
             width: 100%;
             height: 100%;
-            object-fit: contain;
+            object-fit: contain; /* حفظ نسبت تصویر بدون دفرمه شدن */
         }
 
-        canvas {
-            display: none; /* کانواس پردازشی دیده نشود */
-        }
+        canvas { display: none; }
 
+        /* بخش کنترل‌ها: فشرده و همیشه در دسترس */
         #controls {
+            flex-shrink: 0; /* جلوگیری از جمع شدن کنترل‌ها */
             padding: 10px 15px;
-            background: #222;
-            border-top: 2px solid #444;
+            background: #1a1a1a;
+            border-top: 1px solid #333;
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 8px;
+            /* اطمینان از دیده شدن در آیفون‌های بدون دکمه */
+            padding-bottom: env(safe-area-inset-bottom, 10px);
+            z-index: 10;
         }
 
-        /* ناحیه نوار و خط‌کش */
+        /* استایل نوار و خط‌کش */
         .meter-wrapper {
             position: relative;
-            margin-bottom: 5px;
-            padding-top: 5px;
+            margin-bottom: 2px;
         }
 
         #motion-bar-container {
             width: 100%;
-            height: 15px; /* کمی ضخیم‌تر */
+            height: 12px;
             background: #333;
             position: relative;
-            direction: ltr; /* جهت چپ به راست */
+            direction: ltr;
             border: 1px solid #555;
+            border-radius: 2px;
         }
 
         #motion-bar {
             height: 100%;
             background: #00ff00;
             width: 0%;
-            /* transition حذف شد تا لگ نداشته باشد */
         }
 
         #threshold-marker {
@@ -85,55 +90,56 @@ def apply_precision_mode():
             background: red;
             left: 0%;
             z-index: 5;
-            transform: translateX(-50%); /* مرکز کردن خط روی عدد دقیق */
+            transform: translateX(-50%);
             box-shadow: 0 0 4px red;
         }
 
-        /* خط‌کش اعداد */
         #ruler {
             display: flex;
             justify-content: space-between;
             direction: ltr;
-            font-size: 10px;
-            color: #aaa;
+            font-size: 9px;
+            color: #777;
             margin-top: 2px;
-            padding: 0 2px; /* برای تراز شدن با لبه‌ها */
         }
 
-        .slider-row {
+        /* ردیف اطلاعات و اسلایدر کنار هم */
+        .info-row {
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            gap: 10px;
-            margin-top: 5px;
-        }
-        
-        input[type=range] {
-            flex-grow: 1;
-            height: 30px;
-            direction: ltr;
-            cursor: pointer;
-        }
-
-        #debug-info {
-            text-align: center;
-            font-size: 14px;
-            margin-top: 5px;
-            padding: 5px;
+            font-size: 12px;
             background: #000;
+            padding: 5px 8px;
             border-radius: 4px;
             border: 1px solid #333;
         }
 
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+        
+        input[type=range] {
+            flex-grow: 1;
+            height: 25px; /* کمی کوتاه‌تر */
+            direction: ltr;
+        }
+
         button {
-            padding: 8px 15px;
-            border-radius: 5px;
-            border: 1px solid #555;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #444;
             background: #333;
             color: white;
-            margin: 0 auto;
-            display: block;
-            margin-top: 5px;
+            font-size: 14px;
+            width: 100%;
+            cursor: pointer;
         }
+        button:active { background: #555; }
+
     </style>
 </head>
 <body>
@@ -144,32 +150,26 @@ def apply_precision_mode():
     </div>
 
     <div id="controls">
-        <!-- نوار حرکت و خط قرمز -->
+        <!-- نوار حرکت -->
         <div class="meter-wrapper">
             <div id="motion-bar-container">
                 <div id="motion-bar"></div>
                 <div id="threshold-marker"></div>
             </div>
-            <!-- اعداد راهنما -->
             <div id="ruler">
-                <span>0</span>
-                <span>20</span>
-                <span>40</span>
-                <span>60</span>
-                <span>80</span>
-                <span>100</span>
+                <span>0</span><span>20</span><span>40</span><span>60</span><span>80</span><span>100</span>
             </div>
         </div>
 
-        <!-- نمایشگر دقیق اعداد -->
-        <div id="debug-info">
-            حرکت: <span id="motion-val-text" style="color: #0f0; font-weight:bold;">0</span> | 
-            حد آستانه: <span id="thresh-val-text" style="color: #f55; font-weight:bold;">50</span>
+        <!-- نمایشگر اعداد -->
+        <div class="info-row">
+            <div>حرکت: <span id="motion-val-text" style="color: #0f0; font-weight:bold;">0</span></div>
+            <div>آستانه: <span id="thresh-val-text" style="color: #f55; font-weight:bold;">50</span></div>
         </div>
 
-        <!-- اسلایدر کنترل -->
-        <div class="slider-row">
-            <span>تنظیم حد مجاز:</span>
+        <!-- اسلایدر -->
+        <div class="slider-container">
+            <span>حساسیت:</span>
             <input type="range" id="sensitivity-slider" min="0" max="100" value="50" step="1">
         </div>
 
@@ -181,128 +181,10 @@ def apply_precision_mode():
 </html>
 """
 
-    # 2. JavaScript: منطق همگام‌سازی شده و خطی
-    js_content = """
-const video = document.getElementById('video');
-const canvas = document.getElementById('output');
-const ctx = canvas.getContext('2d');
-const motionBar = document.getElementById('motion-bar');
-const thresholdMarker = document.getElementById('threshold-marker');
-const slider = document.getElementById('sensitivity-slider');
-const motionText = document.getElementById('motion-val-text');
-const threshText = document.getElementById('thresh-val-text');
-const container = document.getElementById('camera-container');
-const debugInfo = document.getElementById('debug-info');
-
-let stream = null;
-let facingMode = 'environment';
-let previousFrameData = null;
-
-// ضریب حساسیت: این عدد باعث می‌شود تغییرات کم پیکسل، روی نوار ۰ تا ۱۰۰ دیده شوند.
-// اگر محیط خیلی نویز دارد این عدد را کم کنید، اگر خیلی ساکن است زیاد کنید.
-const AMPLIFICATION = 15; 
-
-// 1. همگام‌سازی اولیه اسلایدر و مارکر قرمز
-updateThreshold();
-
-slider.addEventListener('input', updateThreshold);
-
-function updateThreshold() {
-    const val = parseInt(slider.value);
-    // خط قرمز دقیقاً روی همان درصدی می‌رود که اسلایدر است
-    thresholdMarker.style.left = val + '%';
-    threshText.textContent = val;
-}
-
-async function startCamera() {
-    if (stream) stream.getTracks().forEach(t => t.stop());
-    
-    try {
-        stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: facingMode, width: 320, height: 240 }, // رزولوشن پایین برای سرعت
-            audio: false
-        });
-        video.srcObject = stream;
-        video.onloadedmetadata = () => {
-            canvas.width = 64; // پردازش روی تصویر کوچک
-            canvas.height = 48; 
-            detectMotion();
-        };
-    } catch (e) {
-        alert("خطا در دوربین: " + e.message);
-    }
-}
-
-document.getElementById('switch-camera').addEventListener('click', () => {
-    facingMode = facingMode === 'environment' ? 'user' : 'environment';
-    startCamera();
-});
-
-function detectMotion() {
-    if (video.paused || video.ended) return;
-
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = frame.data;
-    
-    let changedPixels = 0;
-    
-    // الگوریتم مقایسه پیکسل
-    if (previousFrameData) {
-        for (let i = 0; i < data.length; i += 4) {
-            // میانگین تفاوت RGB
-            const diff = (Math.abs(data[i] - previousFrameData[i]) +
-                          Math.abs(data[i+1] - previousFrameData[i+1]) +
-                          Math.abs(data[i+2] - previousFrameData[i+2])) / 3;
-            
-            // اگر تغییر پیکسل بیشتر از 20 (نویز جزئی) بود
-            if (diff > 20) {
-                changedPixels++;
-            }
-        }
-    }
-    
-    previousFrameData = new Uint8ClampedArray(data); // کپی فریم برای دور بعد
-
-    // محاسبه درصد تغییرات
-    const totalPixels = canvas.width * canvas.height;
-    let rawPercent = (changedPixels / totalPixels) * 100;
-    
-    // تبدیل به مقیاس 0 تا 100 برای نمایش
-    let displayValue = Math.floor(rawPercent * AMPLIFICATION);
-    if (displayValue > 100) displayValue = 100;
-
-    // --- بروزرسانی UI ---
-    
-    // 1. نوار سبز (دقیقا برابر عدد محاسبه شده)
-    motionBar.style.width = displayValue + '%';
-    motionText.textContent = displayValue;
-
-    // 2. خواندن مقدار حد مجاز (از اسلایدر)
-    const limit = parseInt(slider.value);
-
-    // 3. شرط قرمز شدن
-    if (displayValue >= limit) {
-        container.style.border = "6px solid red";
-        debugInfo.style.background = "#500"; // قرمز شدن پس‌زمینه اعداد
-    } else {
-        container.style.border = "none";
-        debugInfo.style.background = "#000";
-    }
-
-    requestAnimationFrame(detectMotion);
-}
-
-startCamera();
-"""
-
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
-    
-    with open(js_path, "w", encoding="utf-8") as f:
-        f.write(js_content)
 
-    print("✅ اصلاحات انجام شد:\n1. خط‌کش مدرج (0-100) اضافه شد.\n2. انیمیشن تاخیری حذف شد.\n3. نمایش عددی دقیق برای مقایسه اضافه شد.")
+    print("✅ فایل index.html آپدیت شد. مشکل بیرون زدن کنترل‌ها در موبایل حل شد.")
 
 if __name__ == "__main__":
-    apply_precision_mode()
+    fix_mobile_layout()

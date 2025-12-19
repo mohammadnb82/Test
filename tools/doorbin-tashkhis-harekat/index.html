@@ -3,70 +3,78 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>دوربین تشخیص حرکت دقیق</title>
     <style>
+        * { box-sizing: border-box; }
+
         body { 
             margin: 0; 
+            padding: 0;
             background: #000; 
             color: white; 
-            font-family: monospace; /* فونت منو-اسپیس برای خوانایی اعداد */
-            overflow: hidden;
+            font-family: system-ui, -apple-system, sans-serif;
+            overflow: hidden; /* جلوگیری از اسکرول صفحه */
             display: flex;
             flex-direction: column;
-            height: 100vh;
+            /* استفاده از dvh برای حل مشکل نوار آدرس سافاری در آیفون */
+            height: 100dvh; 
         }
         
+        /* کانتینر دوربین: مهمترین بخش */
         #camera-container {
             position: relative;
-            flex-grow: 1;
+            flex: 1; /* تمام فضای خالی را پر کن */
+            min-height: 0; /* حیاتی: اجازه می‌دهد ویدیو در صورت کمبود جا کوچک شود */
             display: flex;
             justify-content: center;
             align-items: center;
             background: #111;
-            box-sizing: border-box; /* برای محاسبه دقیق بردر */
+            overflow: hidden;
         }
         
         video {
             width: 100%;
             height: 100%;
-            object-fit: contain;
+            object-fit: contain; /* حفظ نسبت تصویر بدون دفرمه شدن */
         }
 
-        canvas {
-            display: none; /* کانواس پردازشی دیده نشود */
-        }
+        canvas { display: none; }
 
+        /* بخش کنترل‌ها: فشرده و همیشه در دسترس */
         #controls {
+            flex-shrink: 0; /* جلوگیری از جمع شدن کنترل‌ها */
             padding: 10px 15px;
-            background: #222;
-            border-top: 2px solid #444;
+            background: #1a1a1a;
+            border-top: 1px solid #333;
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 8px;
+            /* اطمینان از دیده شدن در آیفون‌های بدون دکمه */
+            padding-bottom: env(safe-area-inset-bottom, 10px);
+            z-index: 10;
         }
 
-        /* ناحیه نوار و خط‌کش */
+        /* استایل نوار و خط‌کش */
         .meter-wrapper {
             position: relative;
-            margin-bottom: 5px;
-            padding-top: 5px;
+            margin-bottom: 2px;
         }
 
         #motion-bar-container {
             width: 100%;
-            height: 15px; /* کمی ضخیم‌تر */
+            height: 12px;
             background: #333;
             position: relative;
-            direction: ltr; /* جهت چپ به راست */
+            direction: ltr;
             border: 1px solid #555;
+            border-radius: 2px;
         }
 
         #motion-bar {
             height: 100%;
             background: #00ff00;
             width: 0%;
-            /* transition حذف شد تا لگ نداشته باشد */
         }
 
         #threshold-marker {
@@ -77,55 +85,56 @@
             background: red;
             left: 0%;
             z-index: 5;
-            transform: translateX(-50%); /* مرکز کردن خط روی عدد دقیق */
+            transform: translateX(-50%);
             box-shadow: 0 0 4px red;
         }
 
-        /* خط‌کش اعداد */
         #ruler {
             display: flex;
             justify-content: space-between;
             direction: ltr;
-            font-size: 10px;
-            color: #aaa;
+            font-size: 9px;
+            color: #777;
             margin-top: 2px;
-            padding: 0 2px; /* برای تراز شدن با لبه‌ها */
         }
 
-        .slider-row {
+        /* ردیف اطلاعات و اسلایدر کنار هم */
+        .info-row {
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            gap: 10px;
-            margin-top: 5px;
-        }
-        
-        input[type=range] {
-            flex-grow: 1;
-            height: 30px;
-            direction: ltr;
-            cursor: pointer;
-        }
-
-        #debug-info {
-            text-align: center;
-            font-size: 14px;
-            margin-top: 5px;
-            padding: 5px;
+            font-size: 12px;
             background: #000;
+            padding: 5px 8px;
             border-radius: 4px;
             border: 1px solid #333;
         }
 
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+        
+        input[type=range] {
+            flex-grow: 1;
+            height: 25px; /* کمی کوتاه‌تر */
+            direction: ltr;
+        }
+
         button {
-            padding: 8px 15px;
-            border-radius: 5px;
-            border: 1px solid #555;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #444;
             background: #333;
             color: white;
-            margin: 0 auto;
-            display: block;
-            margin-top: 5px;
+            font-size: 14px;
+            width: 100%;
+            cursor: pointer;
         }
+        button:active { background: #555; }
+
     </style>
 </head>
 <body>
@@ -136,32 +145,26 @@
     </div>
 
     <div id="controls">
-        <!-- نوار حرکت و خط قرمز -->
+        <!-- نوار حرکت -->
         <div class="meter-wrapper">
             <div id="motion-bar-container">
                 <div id="motion-bar"></div>
                 <div id="threshold-marker"></div>
             </div>
-            <!-- اعداد راهنما -->
             <div id="ruler">
-                <span>0</span>
-                <span>20</span>
-                <span>40</span>
-                <span>60</span>
-                <span>80</span>
-                <span>100</span>
+                <span>0</span><span>20</span><span>40</span><span>60</span><span>80</span><span>100</span>
             </div>
         </div>
 
-        <!-- نمایشگر دقیق اعداد -->
-        <div id="debug-info">
-            حرکت: <span id="motion-val-text" style="color: #0f0; font-weight:bold;">0</span> | 
-            حد آستانه: <span id="thresh-val-text" style="color: #f55; font-weight:bold;">50</span>
+        <!-- نمایشگر اعداد -->
+        <div class="info-row">
+            <div>حرکت: <span id="motion-val-text" style="color: #0f0; font-weight:bold;">0</span></div>
+            <div>آستانه: <span id="thresh-val-text" style="color: #f55; font-weight:bold;">50</span></div>
         </div>
 
-        <!-- اسلایدر کنترل -->
-        <div class="slider-row">
-            <span>تنظیم حد مجاز:</span>
+        <!-- اسلایدر -->
+        <div class="slider-container">
+            <span>حساسیت:</span>
             <input type="range" id="sensitivity-slider" min="0" max="100" value="50" step="1">
         </div>
 
