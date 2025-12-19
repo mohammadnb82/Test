@@ -2,117 +2,179 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>سامانه هوشمند</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>دوربین هوشمند</title>
     <style>
-        :root {
-            --primary-color: #3b82f6;
-            --bg-color: #f8fafc;
-            --text-color: #1e293b;
-            --white: #ffffff;
+        * { box-sizing: border-box; margin: 0; padding: 0; touch-action: manipulation; }
+        body { 
+            font-family: system-ui, -apple-system, sans-serif; 
+            background: #111; 
+            color: white; 
+            height: 100dvh; 
+            overflow: hidden; 
+            display: flex; 
+            flex-direction: column; 
         }
 
-        body {
-            font-family: system-ui, -apple-system, sans-serif;
-            background-color: var(--bg-color);
-            margin: 0;
-            padding: 0;
+        /* بخش نمایش ویدیو */
+        .camera-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
-            text-align: center;
+            background: #000;
         }
 
-        .container {
-            background: var(--white);
-            padding: 40px 30px;
-            border-radius: 20px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-            width: 90%;
-            max-width: 500px;
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* تضمین نمایش کامل تصویر */
+            display: block;
         }
 
-        h1 {
-            color: var(--text-color);
-            margin-bottom: 10px;
-            font-size: 2rem;
+        /* کانواس مخفی برای پردازش */
+        #output { display: none; }
+
+        /* لایه آمار روی تصویر */
+        .overlay-stats {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .stat-box {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 5px 10px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
         }
 
-        p.subtitle {
-            color: #64748b;
-            margin-bottom: 40px;
-            font-size: 1.1rem;
-        }
-
-        .button-stack {
+        /* کنترل پنل پایین */
+        .controls {
+            height: auto;
+            min-height: 160px;
+            background: #222;
+            padding: 15px;
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
             display: flex;
             flex-direction: column;
             gap: 15px;
+            z-index: 20;
         }
 
+        /* نوار وضعیت حرکت */
+        .motion-meter {
+            height: 20px;
+            background: #444;
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+        .motion-bar {
+            height: 100%;
+            width: 0%;
+            background: #00ff00;
+            transition: width 0.1s linear, background 0.2s;
+        }
+        .threshold-marker {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: yellow;
+            z-index: 5;
+        }
+
+        /* اسلایدر تنظیم حساسیت */
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        input[type=range] {
+            flex: 1;
+            height: 30px;
+        }
+
+        /* دکمه‌ها */
+        .buttons-row {
+            display: flex;
+            gap: 10px;
+        }
+        
         .btn {
-            display: block;
-            text-decoration: none;
-            padding: 18px;
-            border-radius: 12px;
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
             font-weight: bold;
-            font-size: 1.1rem;
-            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
-        /* دکمه اصلی: ورود به ابزارها */
-        .btn-primary {
-            background-color: var(--primary-color);
-            color: var(--white);
-            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.4);
+        .btn-camera { background: #007bff; }
+        .btn-camera:active { background: #0056b3; }
+
+        .btn-sound { background: #6c757d; }
+        .btn-sound.active { background: #dc3545; animation: pulse 1s infinite; }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
         }
 
-        .btn-primary:hover {
-            background-color: #2563eb;
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.4);
-        }
-
-        /* دکمه‌های فرعی */
-        .btn-secondary {
-            background-color: var(--white);
-            color: var(--text-color);
-            border: 2px solid #e2e8f0;
-        }
-
-        .btn-secondary:hover {
-            border-color: var(--primary-color);
-            color: var(--primary-color);
-        }
-
-        .footer {
-            margin-top: 30px;
-            font-size: 0.9rem;
-            color: #94a3b8;
-        }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>خوش آمدید</h1>
-        <p class="subtitle">پرتال جامع خدمات هوشمند</p>
-
-        <div class="button-stack">
-            <!-- لینک به پوشه tools -->
-            <a href="tools/index.html" class="btn btn-primary">
-                🚀 ورود به بخش ابزارها
-            </a>
-
-            <a href="#" class="btn btn-secondary">درباره ما</a>
-            <a href="#" class="btn btn-secondary">ارتباط با پشتیبانی</a>
-        </div>
-
-        <div class="footer">
-            نسخه ۱.۰.۰
+    <div class="camera-container">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="output"></canvas>
+        
+        <div class="overlay-stats">
+            <div class="stat-box">حرکت: <span id="motion-val-text">0</span>%</div>
+            <div class="stat-box" style="color: yellow;">حساسیت: <span id="thresh-val-text">50</span>%</div>
         </div>
     </div>
 
+    <div class="controls">
+        <!-- نوار نمایشگر حرکت -->
+        <div class="motion-meter">
+            <div id="motion-bar" class="motion-bar"></div>
+            <div id="threshold-marker" class="threshold-marker" style="left: 50%;"></div>
+        </div>
+
+        <!-- اسلایدر -->
+        <div class="slider-container">
+            <span>حساسیت:</span>
+            <input type="range" id="sensitivity-slider" min="1" max="100" value="50">
+        </div>
+
+        <!-- دکمه‌ها -->
+        <div class="buttons-row">
+            <button id="switch-camera" class="btn btn-camera">
+                📷 چرخش دوربین
+            </button>
+            <button id="toggle-sound" class="btn btn-sound">
+                🔇 آژیر: خاموش
+            </button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
 </body>
 </html>
