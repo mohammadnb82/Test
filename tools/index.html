@@ -1,78 +1,141 @@
-import os
-
-def fix_root_index_only():
-    print("🚀 بازسازی فایل ایندکس صفحه اصلی (Root)...")
-
-    root_html_content = """<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>صفحه اصلی</title>
+    <title>لیست ابزارها</title>
     <style>
         body {
             font-family: system-ui, -apple-system, sans-serif;
-            background: #111;
+            background: #1a1a1a;
             color: white;
+            padding: 20px;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            gap: 20px;
         }
-        h1 { margin-bottom: 40px; }
-        .menu-btn {
+        h2 { margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 15px;
+            width: 100%;
+            max-width: 800px;
+        }
+        .tool-btn {
             background: #333;
-            color: white;
-            border: 1px solid #555;
-            padding: 15px 30px;
-            width: 80%;
-            max-width: 300px;
-            font-size: 18px;
+            color: #888;
+            border: 1px solid #444;
+            padding: 15px;
             border-radius: 12px;
-            cursor: pointer;
+            text-align: center;
             text-decoration: none;
+            font-size: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: background 0.2s;
+            min-height: 80px;
+            transition: 0.2s;
+            cursor: default;
         }
-        .menu-btn:hover { background: #444; }
-        .primary-btn {
-            background: #007bff;
-            border: none;
+        /* استایل دکمه فعال (دوربین) */
+        .tool-btn.active {
+            background: #28a745;
+            color: white;
+            border-color: #1e7e34;
+            cursor: pointer;
             font-weight: bold;
+            font-size: 16px;
+            box-shadow: 0 4px 10px rgba(40, 167, 69, 0.3);
         }
-        .primary-btn:hover { background: #0056b3; }
+        .tool-btn.active:hover { background: #218838; transform: translateY(-2px); }
+        
+        /* استایل دکمه‌های غیرفعال */
+        .tool-btn.disabled {
+            opacity: 0.5;
+        }
+        
+        .back-link {
+            margin-top: 40px;
+            color: #aaa;
+            text-decoration: none;
+            padding: 10px 20px;
+            border: 1px solid #444;
+            border-radius: 8px;
+        }
+        .back-link:hover { background: #333; color: white; }
     </style>
 </head>
 <body>
 
-    <h1>منوی اصلی</h1>
+    <h2>🛠 جعبه ابزار (۲۰ آیتم)</h2>
 
-    <!-- دکمه اول: هدایت به صفحه لیست ابزارها -->
-    <a href="tools/index.html" class="menu-btn primary-btn">
-        📂 ورود به بخش ابزارها
-    </a>
+    <div class="grid">
+        
+        <a href="doorbin-tashkhis-harekat/index.html" class="tool-btn active">
+            📷 دوربین تشخیص حرکت
+        </a>
+        <div class="tool-btn disabled">
+            ابزار شماره 2 (خالی)
+        </div>
+        <div class="tool-btn disabled">
+            ابزار شماره 3 (خالی)
+        </div>
+        <div class="tool-btn disabled">
+            ابزار شماره 4 (خالی)
+        </div>
+        <div class="tool-btn disabled">
+            ابزار شماره 5 (خالی)
+        </div>
+        <div class="tool-btn disabled">
+            ابزار شماره 6 (خالی)
+        </div>
+        <div class="tool-btn disabled">
+            ابزار شماره 7 (خالی)
+        </div>
+        <div class="tool-btn disabled">
+            ابزار شماره 8 (خالی)
+        </div>
+        <div class="tool-btn disabled">
+            ابزار شماره 9 (خالی)
+        </div>
+        <div class="tool-btn disabled">
+            ابزار شماره 10 (خالی)
+        </div>
+        <div class="tool-btn disabled">
+            ابزار شماره 11 (خالی)
+        </div>
+        <div class="tool-btn disabled">
+            ابزار شماره 12 (خالی)
+        </div>
+        <div class="tool-btn disabled">
+            ابزار شماره 13 (خالی)
+        </div>
+        <div class="tool-btn disabled">
+            ابزار شماره 14 (خالی)
+        </div>
+        <div class="tool-btn disabled">
+            ابزار شماره 15 (خالی)
+        </div>
+        <div class="tool-btn disabled">
+            ابزار شماره 16 (خالی)
+        </div>
+        <div class="tool-btn disabled">
+            ابزار شماره 17 (خالی)
+        </div>
+        <div class="tool-btn disabled">
+            ابزار شماره 18 (خالی)
+        </div>
+        <div class="tool-btn disabled">
+            ابزار شماره 19 (خالی)
+        </div>
+        <div class="tool-btn disabled">
+            ابزار شماره 20 (خالی)
+        </div>
+    </div>
 
-    <!-- دکمه‌های رزرو -->
-    <a href="#" class="menu-btn">دکمه شماره ۲</a>
-    <a href="#" class="menu-btn">دکمه شماره ۳</a>
+    <a href="../index.html" class="back-link">⬅️ بازگشت به صفحه اصلی</a>
 
 </body>
 </html>
-"""
-    
-    try:
-        with open("index.html", "w", encoding="utf-8") as f:
-            f.write(root_html_content)
-        print("✅ فایل اصلی سایت (index.html) اصلاح شد.")
-        print("🔗 دکمه اول اکنون به 'tools/index.html' اشاره می‌کند.")
-    except Exception a:
-        print(f"❌ خطا: {e}")
-
-if __name__ == "__main__":
-    fix_root_index_only()
-`
