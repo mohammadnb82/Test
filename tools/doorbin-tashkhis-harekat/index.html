@@ -4,20 +4,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>دوربین تشخیص حرکت</title>
+    <title>دوربین تشخیص حرکت دقیق</title>
     <style>
         body { 
             margin: 0; 
             background: #000; 
             color: white; 
-            font-family: sans-serif; 
-            overflow: hidden; /* جلوگیری از اسکرول */
+            font-family: monospace; /* فونت منو-اسپیس برای خوانایی اعداد */
+            overflow: hidden;
             display: flex;
             flex-direction: column;
             height: 100vh;
         }
         
-        /* کانتینر ویدیو */
         #camera-container {
             position: relative;
             flex-grow: 1;
@@ -25,116 +24,148 @@
             justify-content: center;
             align-items: center;
             background: #111;
+            box-sizing: border-box; /* برای محاسبه دقیق بردر */
         }
         
         video {
             width: 100%;
             height: 100%;
-            object-fit: cover; /* پر کردن صفحه */
+            object-fit: contain;
         }
 
-        /* بوم نقاشی برای دیباگ یا افکت (مخفی یا روی ویدیو) */
         canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
+            display: none; /* کانواس پردازشی دیده نشود */
         }
 
-        /* کنترل‌ها در پایین صفحه */
         #controls {
-            padding: 15px;
-            background: rgba(20, 20, 20, 0.9);
-            border-top: 1px solid #333;
+            padding: 10px 15px;
+            background: #222;
+            border-top: 2px solid #444;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 5px;
         }
 
-        /* استایل اسلایدر */
-        .slider-container {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-        }
-        
-        input[type=range] {
-            flex-grow: 1;
-            height: 25px;
+        /* ناحیه نوار و خط‌کش */
+        .meter-wrapper {
+            position: relative;
+            margin-bottom: 5px;
+            padding-top: 5px;
         }
 
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-            border-radius: 25px;
-            border: none;
+        #motion-bar-container {
+            width: 100%;
+            height: 15px; /* کمی ضخیم‌تر */
             background: #333;
-            color: white;
+            position: relative;
+            direction: ltr; /* جهت چپ به راست */
             border: 1px solid #555;
         }
 
-        #status {
-            font-size: 12px;
-            text-align: center;
-            color: #888;
-            margin-bottom: 5px;
-        }
-
-        /* شاخص بصری مقدار حرکت */
-        #motion-bar-container {
-            width: 100%;
-            height: 5px;
-            background: #333;
-            margin-bottom: 10px;
-            position: relative;
-            direction: ltr;
-        }
         #motion-bar {
             height: 100%;
             background: #00ff00;
             width: 0%;
-            transition: width 0.1s;
+            /* transition حذف شد تا لگ نداشته باشد */
         }
+
         #threshold-marker {
             position: absolute;
-            top: -2px;
-            bottom: -2px;
+            top: 0;
+            bottom: 0;
             width: 2px;
             background: red;
-            left: 50%; /* پیش‌فرض */
-            z-index: 2;
+            left: 0%;
+            z-index: 5;
+            transform: translateX(-50%); /* مرکز کردن خط روی عدد دقیق */
+            box-shadow: 0 0 4px red;
+        }
+
+        /* خط‌کش اعداد */
+        #ruler {
+            display: flex;
+            justify-content: space-between;
+            direction: ltr;
+            font-size: 10px;
+            color: #aaa;
+            margin-top: 2px;
+            padding: 0 2px; /* برای تراز شدن با لبه‌ها */
+        }
+
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        
+        input[type=range] {
+            flex-grow: 1;
+            height: 30px;
+            direction: ltr;
+            cursor: pointer;
+        }
+
+        #debug-info {
+            text-align: center;
+            font-size: 14px;
+            margin-top: 5px;
+            padding: 5px;
+            background: #000;
+            border-radius: 4px;
+            border: 1px solid #333;
+        }
+
+        button {
+            padding: 8px 15px;
+            border-radius: 5px;
+            border: 1px solid #555;
+            background: #333;
+            color: white;
+            margin: 0 auto;
+            display: block;
+            margin-top: 5px;
         }
     </style>
 </head>
 <body>
 
-    <div id="status">در حال آماده‌سازی...</div>
-
     <div id="camera-container">
         <video id="video" autoplay playsinline muted></video>
-        <!-- کانواس برای پردازش تصویر (مخفی نیست چون شاید بخواهیم مناطق حرکت را نشان دهیم) -->
         <canvas id="output"></canvas>
     </div>
 
     <div id="controls">
-        <!-- نمایشگر گرافیکی مقدار حرکت -->
-        <div id="motion-bar-container">
-            <div id="motion-bar"></div>
-            <div id="threshold-marker"></div>
+        <!-- نوار حرکت و خط قرمز -->
+        <div class="meter-wrapper">
+            <div id="motion-bar-container">
+                <div id="motion-bar"></div>
+                <div id="threshold-marker"></div>
+            </div>
+            <!-- اعداد راهنما -->
+            <div id="ruler">
+                <span>0</span>
+                <span>20</span>
+                <span>40</span>
+                <span>60</span>
+                <span>80</span>
+                <span>100</span>
+            </div>
         </div>
 
-        <div class="slider-container">
-            <span>حساسیت:</span>
-            <input type="range" id="sensitivity" min="1" max="100" value="50">
-            <span id="sens-val">50%</span>
+        <!-- نمایشگر دقیق اعداد -->
+        <div id="debug-info">
+            حرکت: <span id="motion-val-text" style="color: #0f0; font-weight:bold;">0</span> | 
+            حد آستانه: <span id="thresh-val-text" style="color: #f55; font-weight:bold;">50</span>
         </div>
 
-        <div style="text-align: center; margin-top:5px;">
-            <button id="switch-camera">🔄 چرخش دوربین</button>
+        <!-- اسلایدر کنترل -->
+        <div class="slider-row">
+            <span>تنظیم حد مجاز:</span>
+            <input type="range" id="sensitivity-slider" min="0" max="100" value="50" step="1">
         </div>
+
+        <button id="switch-camera">🔄 چرخش دوربین</button>
     </div>
 
     <script src="app.js"></script>
