@@ -2,179 +2,58 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>دوربین هوشمند</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>صفحه اصلی</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; touch-action: manipulation; }
-        body { 
-            font-family: system-ui, -apple-system, sans-serif; 
-            background: #111; 
-            color: white; 
-            height: 100dvh; 
-            overflow: hidden; 
-            display: flex; 
-            flex-direction: column; 
-        }
-
-        /* بخش نمایش ویدیو */
-        .camera-container {
-            flex: 1;
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #000;
-        }
-
-        video {
-            width: 100%;
-            height: 100%;
-            object-fit: contain; /* تضمین نمایش کامل تصویر */
-            display: block;
-        }
-
-        /* کانواس مخفی برای پردازش */
-        #output { display: none; }
-
-        /* لایه آمار روی تصویر */
-        .overlay-stats {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            right: 10px;
-            display: flex;
-            justify-content: space-between;
-            z-index: 10;
-            pointer-events: none;
-        }
-        .stat-box {
-            background: rgba(0, 0, 0, 0.6);
-            padding: 5px 10px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: bold;
-        }
-
-        /* کنترل پنل پایین */
-        .controls {
-            height: auto;
-            min-height: 160px;
-            background: #222;
-            padding: 15px;
-            border-top-left-radius: 20px;
-            border-top-right-radius: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            z-index: 20;
-        }
-
-        /* نوار وضعیت حرکت */
-        .motion-meter {
-            height: 20px;
-            background: #444;
-            border-radius: 10px;
-            position: relative;
-            overflow: hidden;
-        }
-        .motion-bar {
-            height: 100%;
-            width: 0%;
-            background: #00ff00;
-            transition: width 0.1s linear, background 0.2s;
-        }
-        .threshold-marker {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            width: 2px;
-            background: yellow;
-            z-index: 5;
-        }
-
-        /* اسلایدر تنظیم حساسیت */
-        .slider-container {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        input[type=range] {
-            flex: 1;
-            height: 30px;
-        }
-
-        /* دکمه‌ها */
-        .buttons-row {
-            display: flex;
-            gap: 10px;
-        }
-        
-        .btn {
-            flex: 1;
-            padding: 12px;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #111;
             color: white;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            height: 100vh;
+            margin: 0;
+            gap: 20px;
         }
-
-        .btn-camera { background: #007bff; }
-        .btn-camera:active { background: #0056b3; }
-
-        .btn-sound { background: #6c757d; }
-        .btn-sound.active { background: #dc3545; animation: pulse 1s infinite; }
-
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.02); }
-            100% { transform: scale(1); }
+        h1 { margin-bottom: 40px; }
+        .menu-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            width: 80%;
+            max-width: 300px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 15px;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+            box-shadow: 0 4px 15px rgba(0,123,255,0.3);
         }
-
+        .menu-btn:hover { background: #0056b3; }
+        .footer {
+            margin-top: 50px;
+            color: #666;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
 
-    <div class="camera-container">
-        <video id="video" autoplay playsinline muted></video>
-        <canvas id="output"></canvas>
-        
-        <div class="overlay-stats">
-            <div class="stat-box">حرکت: <span id="motion-val-text">0</span>%</div>
-            <div class="stat-box" style="color: yellow;">حساسیت: <span id="thresh-val-text">50</span>%</div>
-        </div>
-    </div>
+    <h1>اپلیکیشن من</h1>
 
-    <div class="controls">
-        <!-- نوار نمایشگر حرکت -->
-        <div class="motion-meter">
-            <div id="motion-bar" class="motion-bar"></div>
-            <div id="threshold-marker" class="threshold-marker" style="left: 50%;"></div>
-        </div>
+    <!-- لینک اصلی به پوشه تولز -->
+    <a href="tools/index.html" class="menu-btn">
+        📂 ورود به ابزارها
+    </a>
 
-        <!-- اسلایدر -->
-        <div class="slider-container">
-            <span>حساسیت:</span>
-            <input type="range" id="sensitivity-slider" min="1" max="100" value="50">
-        </div>
+    <div class="footer">نسخه ۲.۰ - بازسازی کامل</div>
 
-        <!-- دکمه‌ها -->
-        <div class="buttons-row">
-            <button id="switch-camera" class="btn btn-camera">
-                📷 چرخش دوربین
-            </button>
-            <button id="toggle-sound" class="btn btn-sound">
-                🔇 آژیر: خاموش
-            </button>
-        </div>
-    </div>
-
-    <script src="app.js"></script>
 </body>
 </html>

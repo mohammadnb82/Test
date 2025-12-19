@@ -1,425 +1,195 @@
 import os
 
-def add_siren_feature():
-    # ---------------------------------------------------------
-    # 1. بروزرسانی index.html (اضافه کردن دکمه صدا)
-    # ---------------------------------------------------------
-    html_path = "index.html" # فرض بر این است که فایل در ریشه است، اگر نیست مسیر را اصلاح کنید
-    
-    # محتوای کامل و استاندارد HTML (شامل CSSهای اصلاح شده قبلی + دکمه جدید)
-    html_content = """<!DOCTYPE html>
+def fix_navigation_full():
+    print("🚀 شروع عملیات بازسازی کامل ناوبری سایت...")
+
+    # ==========================================
+    # 1. بازسازی فایل ریشه (Root index.html)
+    # وظیفه: فقط یک دروازه ورود به پوشه tools باشد
+    # ==========================================
+    root_html_content = """<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>دوربین هوشمند</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>صفحه اصلی</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; touch-action: manipulation; }
-        body { 
-            font-family: system-ui, -apple-system, sans-serif; 
-            background: #111; 
-            color: white; 
-            height: 100dvh; 
-            overflow: hidden; 
-            display: flex; 
-            flex-direction: column; 
-        }
-
-        /* بخش نمایش ویدیو */
-        .camera-container {
-            flex: 1;
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #000;
-        }
-
-        video {
-            width: 100%;
-            height: 100%;
-            object-fit: contain; /* تضمین نمایش کامل تصویر */
-            display: block;
-        }
-
-        /* کانواس مخفی برای پردازش */
-        #output { display: none; }
-
-        /* لایه آمار روی تصویر */
-        .overlay-stats {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            right: 10px;
-            display: flex;
-            justify-content: space-between;
-            z-index: 10;
-            pointer-events: none;
-        }
-        .stat-box {
-            background: rgba(0, 0, 0, 0.6);
-            padding: 5px 10px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: bold;
-        }
-
-        /* کنترل پنل پایین */
-        .controls {
-            height: auto;
-            min-height: 160px;
-            background: #222;
-            padding: 15px;
-            border-top-left-radius: 20px;
-            border-top-right-radius: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            z-index: 20;
-        }
-
-        /* نوار وضعیت حرکت */
-        .motion-meter {
-            height: 20px;
-            background: #444;
-            border-radius: 10px;
-            position: relative;
-            overflow: hidden;
-        }
-        .motion-bar {
-            height: 100%;
-            width: 0%;
-            background: #00ff00;
-            transition: width 0.1s linear, background 0.2s;
-        }
-        .threshold-marker {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            width: 2px;
-            background: yellow;
-            z-index: 5;
-        }
-
-        /* اسلایدر تنظیم حساسیت */
-        .slider-container {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        input[type=range] {
-            flex: 1;
-            height: 30px;
-        }
-
-        /* دکمه‌ها */
-        .buttons-row {
-            display: flex;
-            gap: 10px;
-        }
-        
-        .btn {
-            flex: 1;
-            padding: 12px;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #111;
             color: white;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            height: 100vh;
+            margin: 0;
+            gap: 20px;
         }
-
-        .btn-camera { background: #007bff; }
-        .btn-camera:active { background: #0056b3; }
-
-        .btn-sound { background: #6c757d; }
-        .btn-sound.active { background: #dc3545; animation: pulse 1s infinite; }
-
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.02); }
-            100% { transform: scale(1); }
+        h1 { margin-bottom: 40px; }
+        .menu-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            width: 80%;
+            max-width: 300px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 15px;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+            box-shadow: 0 4px 15px rgba(0,123,255,0.3);
         }
-
+        .menu-btn:hover { background: #0056b3; }
+        .footer {
+            margin-top: 50px;
+            color: #666;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
 
-    <div class="camera-container">
-        <video id="video" autoplay playsinline muted></video>
-        <canvas id="output"></canvas>
+    <h1>اپلیکیشن من</h1>
+
+    <!-- لینک اصلی به پوشه تولز -->
+    <a href="tools/index.html" class="menu-btn">
+        📂 ورود به ابزارها
+    </a>
+
+    <div class="footer">نسخه ۲.۰ - بازسازی کامل</div>
+
+</body>
+</html>
+"""
+    try:
+        with open("index.html", "w", encoding="utf-8") as f:
+            f.write(root_html_content)
+        print("✅ مرحله ۱: فایل اصلی (index.html) بازسازی شد.")
+    except Exception as e:
+        print(f"❌ خطا در مرحله ۱: {e}")
+
+
+    # ==========================================
+    # 2. بازسازی فایل تولز (tools/index.html)
+    # وظیفه: ۲۰ دکمه داشته باشد، دکمه ۱ به دوربین برود
+    # ==========================================
+    
+    # اطمینان از وجود پوشه tools
+    if not os.path.exists("tools"):
+        os.makedirs("tools")
+    
+    # ساخت لیست ۲۰ دکمه
+    buttons_html = ""
+    for i in range(1, 21):
+        if i == 1:
+            # دکمه اول: فعال و سبز رنگ (لینک به دوربین)
+            buttons_html += f"""
+        <a href="doorbin-tashkhis-harekat/index.html" class="tool-btn active">
+            📷 دوربین تشخیص حرکت
+        </a>"""
+        else:
+            # دکمه‌های بعدی: غیرفعال یا رزرو
+            buttons_html += f"""
+        <div class="tool-btn disabled">
+            ابزار شماره {i} (خالی)
+        </div>"""
+
+    tools_html_content = f"""<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لیست ابزارها</title>
+    <style>
+        body {{
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #1a1a1a;
+            color: white;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }}
+        h2 {{ margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 10px; }}
+        .grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 15px;
+            width: 100%;
+            max-width: 800px;
+        }}
+        .tool-btn {{
+            background: #333;
+            color: #888;
+            border: 1px solid #444;
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            text-decoration: none;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 80px;
+            transition: 0.2s;
+            cursor: default;
+        }}
+        /* استایل دکمه فعال (دوربین) */
+        .tool-btn.active {{
+            background: #28a745;
+            color: white;
+            border-color: #1e7e34;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+            box-shadow: 0 4px 10px rgba(40, 167, 69, 0.3);
+        }}
+        .tool-btn.active:hover {{ background: #218838; transform: translateY(-2px); }}
         
-        <div class="overlay-stats">
-            <div class="stat-box">حرکت: <span id="motion-val-text">0</span>%</div>
-            <div class="stat-box" style="color: yellow;">حساسیت: <span id="thresh-val-text">50</span>%</div>
-        </div>
+        /* استایل دکمه‌های غیرفعال */
+        .tool-btn.disabled {{
+            opacity: 0.5;
+        }}
+        
+        .back-link {{
+            margin-top: 40px;
+            color: #aaa;
+            text-decoration: none;
+            padding: 10px 20px;
+            border: 1px solid #444;
+            border-radius: 8px;
+        }}
+        .back-link:hover {{ background: #333; color: white; }}
+    </style>
+</head>
+<body>
+
+    <h2>🛠 جعبه ابزار (۲۰ آیتم)</h2>
+
+    <div class="grid">
+        {buttons_html}
     </div>
 
-    <div class="controls">
-        <!-- نوار نمایشگر حرکت -->
-        <div class="motion-meter">
-            <div id="motion-bar" class="motion-bar"></div>
-            <div id="threshold-marker" class="threshold-marker" style="left: 50%;"></div>
-        </div>
+    <a href="../index.html" class="back-link">⬅️ بازگشت به صفحه اصلی</a>
 
-        <!-- اسلایدر -->
-        <div class="slider-container">
-            <span>حساسیت:</span>
-            <input type="range" id="sensitivity-slider" min="1" max="100" value="50">
-        </div>
-
-        <!-- دکمه‌ها -->
-        <div class="buttons-row">
-            <button id="switch-camera" class="btn btn-camera">
-                📷 چرخش دوربین
-            </button>
-            <button id="toggle-sound" class="btn btn-sound">
-                🔇 آژیر: خاموش
-            </button>
-        </div>
-    </div>
-
-    <script src="app.js"></script>
 </body>
 </html>
 """
 
-    # ---------------------------------------------------------
-    # 2. بروزرسانی app.js (اضافه کردن منطق آژیر به کد اصلاح شده قبلی)
-    # ---------------------------------------------------------
-    js_path = "tools/doorbin-tashkhis-harekat/app.js"
-    if not os.path.exists("tools/doorbin-tashkhis-harekat"):
-         js_path = "app.js" # مسیر جایگزین
-
-    js_content = """
-let videoStream = null;
-let video = document.getElementById('video');
-let canvas = document.getElementById('output');
-let ctx = canvas.getContext('2d', { willReadFrequently: true });
-let sensitivitySlider = document.getElementById('sensitivity-slider');
-let motionBar = document.getElementById('motion-bar');
-let thresholdMarker = document.getElementById('threshold-marker');
-let motionValText = document.getElementById('motion-val-text');
-let threshValText = document.getElementById('thresh-val-text');
-let switchBtn = document.getElementById('switch-camera');
-let soundBtn = document.getElementById('toggle-sound');
-
-// متغیرهای وضعیت
-let currentFacingMode = 'environment';
-let animationId = null;
-let lastFrameData = null;
-let isSoundEnabled = false; // وضعیت پیش‌فرض صدا
-
-// سیستم صوتی (Oscillator)
-let audioCtx = null;
-let oscillator = null;
-let gainNode = null;
-
-// اندازه پردازش (ثابت شده برای رفع باگ)
-const PROCESS_WIDTH = 64;  
-const PROCESS_HEIGHT = 48; 
-
-// تنظیم اولیه اسلایدر
-sensitivitySlider.value = 50;
-updateThresholdUI(50);
-
-// راه‌اندازی دوربین
-async function setupCamera() {
-    if (videoStream) {
-        videoStream.getTracks().forEach(track => track.stop());
-    }
-
-    try {
-        const constraints = {
-            video: {
-                facingMode: currentFacingMode,
-                width: { ideal: 640 },
-                height: { ideal: 480 }
-            },
-            audio: false
-        };
-
-        videoStream = await navigator.mediaDevices.getUserMedia(constraints);
-        video.srcObject = videoStream;
-
-        video.onloadedmetadata = () => {
-            canvas.width = PROCESS_WIDTH;
-            canvas.height = PROCESS_HEIGHT;
-            video.play();
-            startDetection();
-        };
-
-    } catch (err) {
-        console.error("خطا در دسترسی به دوربین:", err);
-        alert("لطفاً دسترسی دوربین را فعال کنید.");
-    }
-}
-
-// توابع کنترل صدا (آژیر)
-function initAudio() {
-    if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-}
-
-function startAlarm() {
-    if (oscillator) return; // اگر آژیر روشن است کاری نکن
-    
-    initAudio();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-
-    oscillator = audioCtx.createOscillator();
-    gainNode = audioCtx.createGain();
-
-    oscillator.type = 'sawtooth'; // نوع موج صدا (تیز و آژیر مانند)
-    oscillator.frequency.setValueAtTime(600, audioCtx.currentTime); // شروع فرکانس
-    
-    // افکت بالا و پایین رفتن صدا (آژیر پلیسی)
-    oscillator.frequency.linearRampToValueAtTime(900, audioCtx.currentTime + 0.5);
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
-    oscillator.start();
-
-    // تکرار افکت آژیر
-    oscillator.onended = () => { oscillator = null; };
-}
-
-function stopAlarm() {
-    if (oscillator) {
-        try {
-            oscillator.stop();
-            oscillator.disconnect();
-            gainNode.disconnect();
-        } catch(e) {}
-        oscillator = null;
-    }
-}
-
-// حلقه تشخیص حرکت
-function startDetection() {
-    if (animationId) cancelAnimationFrame(animationId);
-
-    function loop() {
-        if (video.paused || video.ended) return;
-
-        ctx.drawImage(video, 0, 0, PROCESS_WIDTH, PROCESS_HEIGHT);
-        
-        const frameData = ctx.getImageData(0, 0, PROCESS_WIDTH, PROCESS_HEIGHT);
-        const currentData = frameData.data;
-
-        let movementScore = 0;
-
-        if (lastFrameData) {
-            let totalDiff = 0;
-            const length = currentData.length;
-
-            for (let i = 0; i < length; i += 16) { 
-                const rDiff = Math.abs(currentData[i] - lastFrameData[i]);
-                const gDiff = Math.abs(currentData[i+1] - lastFrameData[i+1]);
-                const bDiff = Math.abs(currentData[i+2] - lastFrameData[i+2]);
-
-                if (rDiff + gDiff + bDiff > 50) {
-                    totalDiff++;
-                }
-            }
-            movementScore = Math.min(100, Math.floor((totalDiff / (PROCESS_WIDTH * PROCESS_HEIGHT / 16)) * 300));
-        }
-
-        lastFrameData = new Uint8ClampedArray(currentData);
-
-        updateUI(movementScore);
-
-        animationId = requestAnimationFrame(loop);
-    }
-
-    loop();
-}
-
-// بروزرسانی رابط کاربری و منطق آلارم
-function updateUI(score) {
-    motionBar.style.width = score + '%';
-    motionValText.innerText = score;
-    const threshold = parseInt(sensitivitySlider.value);
-    
-    if (score > threshold) {
-        // وضعیت خطر
-        document.body.style.boxShadow = "inset 0 0 50px red";
-        document.body.style.border = "5px solid red";
-        motionBar.style.background = "red";
-        
-        // پخش آژیر اگر دکمه صدا روشن باشد
-        if (isSoundEnabled) {
-            startAlarm();
-        }
-    } else {
-        // وضعیت عادی
-        document.body.style.boxShadow = "none";
-        document.body.style.border = "none";
-        motionBar.style.background = "#00ff00";
-        
-        // قطع آژیر
-        stopAlarm();
-    }
-}
-
-function updateThresholdUI(val) {
-    thresholdMarker.style.left = val + '%';
-    threshValText.innerText = val;
-}
-
-// رویدادهای اسلایدر
-sensitivitySlider.addEventListener('input', (e) => {
-    updateThresholdUI(e.target.value);
-});
-
-// دکمه چرخش دوربین
-switchBtn.addEventListener('click', () => {
-    currentFacingMode = (currentFacingMode === 'environment') ? 'user' : 'environment';
-    setupCamera();
-});
-
-// دکمه کنترل صدا
-soundBtn.addEventListener('click', () => {
-    isSoundEnabled = !isSoundEnabled;
-    
-    if (isSoundEnabled) {
-        // اولین تعامل برای باز کردن قفل AudioContext مرورگر
-        initAudio();
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-
-        soundBtn.innerHTML = "🔊 آژیر: روشن";
-        soundBtn.classList.add('active');
-        soundBtn.style.background = "#dc3545"; // قرمز برای حالت آماده باش
-    } else {
-        stopAlarm();
-        soundBtn.innerHTML = "🔇 آژیر: خاموش";
-        soundBtn.classList.remove('active');
-        soundBtn.style.background = "#6c757d"; // خاکستری
-    }
-});
-
-// شروع برنامه
-setupCamera();
-"""
-
-    # نوشتن فایل‌ها
     try:
-        with open(html_path, "w", encoding="utf-8") as f:
-            f.write(html_content)
-        print(f"✅ فایل {html_path} با دکمه جدید آپدیت شد.")
-
-        with open(js_path, "w", encoding="utf-8") as f:
-            f.write(js_content)
-        print(f"✅ فایل {js_path} با منطق آژیر آپدیت شد.")
-        
+        with open("tools/index.html", "w", encoding="utf-8") as f:
+            f.write(tools_html_content)
+        print("✅ مرحله ۲: فایل لیست ابزارها (tools/index.html) با ۲۰ دکمه بازسازی شد.")
+        print("   -> دکمه ۱ به 'doorbin-tashkhis-harekat/index.html' لینک شد.")
     except Exception as e:
-        print(f"❌ خطا در نوشتن فایل‌ها: {e}")
+        print(f"❌ خطا در مرحله ۲: {e}")
 
 if __name__ == "__main__":
-    add_siren_feature()
+    fix_navigation_full()
