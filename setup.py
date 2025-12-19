@@ -7,7 +7,7 @@ html_content = """<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>دوربین هوشمند پیشرفته</title>
+    <title>دوربین هوشمند - نسخه نهایی</title>
     <style>
         body { 
             background-color: #121212; 
@@ -38,7 +38,7 @@ html_content = """<!DOCTYPE html>
         
         #alarmLayer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255, 0, 0, 0.4);
+            background: rgba(255, 0, 0, 0.3);
             display: none; pointer-events: none; z-index: 5;
             box-shadow: inset 0 0 50px red;
         }
@@ -64,14 +64,14 @@ html_content = """<!DOCTYPE html>
             border-radius: 4px;
             overflow: hidden;
             border: 1px solid #333;
-            direction: rtl; /* 0 سمت راست */
+            direction: rtl; /* مبدا (0) سمت راست */
         }
         
         .motion-fill {
             height: 100%;
             width: 0%;
-            background: #32d74b; /* سبز روشن اپل */
-            transition: width 0.1s linear;
+            background: #32d74b;
+            transition: width 0.05s linear; /* واکنش سریع‌تر */
         }
 
         .threshold-line {
@@ -79,10 +79,10 @@ html_content = """<!DOCTYPE html>
             top: 0;
             bottom: 0;
             width: 3px;
-            background: #ff453a; /* قرمز روشن */
+            background: #ff453a;
             z-index: 10;
             box-shadow: 0 0 4px rgba(255, 69, 58, 0.8);
-            transition: right 0.1s; /* حرکت نرم از راست */
+            /* right توسط اسکریپت کنترل می‌شود */
         }
 
         .scale-numbers {
@@ -92,7 +92,7 @@ html_content = """<!DOCTYPE html>
             font-size: 11px;
             margin-top: 4px;
             padding: 0 2px;
-            direction: ltr; /* چیدمان اعداد 100 چپ - 0 راست */
+            direction: ltr; /* عدد 100 چپ، 0 راست */
         }
 
         .stats-row {
@@ -114,6 +114,7 @@ html_content = """<!DOCTYPE html>
         }
         .slider-label { font-size: 14px; color: #aeaeb2; min-width: 60px; }
         
+        /* استایل اسلایدر با جهت راست‌چین */
         input[type=range] {
             flex-grow: 1;
             height: 6px;
@@ -121,7 +122,7 @@ html_content = """<!DOCTYPE html>
             background: #3a3a3c;
             outline: none;
             -webkit-appearance: none;
-            direction: ltr;
+            direction: rtl; /* کلید حل مشکل معکوس بودن */
         }
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none;
@@ -158,9 +159,7 @@ html_content = """<!DOCTYPE html>
             justify-content: center;
             gap: 8px;
             flex: 1;
-            transition: transform 0.1s;
         }
-        .btn:active { transform: scale(0.98); }
 
         .btn-cam { background: #3a3a3c; } 
         
@@ -199,7 +198,6 @@ html_content = """<!DOCTYPE html>
         <div class="motion-graph-wrapper">
             <div class="motion-track">
                 <div id="motionFill" class="motion-fill"></div>
-                <!-- خط قرمز با right تنظیم می‌شود تا با اعداد 0 راست هماهنگ باشد -->
                 <div id="threshLine" class="threshold-line" style="right: 20%;"></div>
             </div>
             <div class="scale-numbers">
@@ -214,7 +212,7 @@ html_content = """<!DOCTYPE html>
 
         <div class="slider-container">
             <span class="slider-label">حساسیت:</span>
-            <!-- مقدار پیش‌فرض کمتر برای تست راحت‌تر -->
+            <!-- مقدار مینیمم 1 و ماکزیمم 100 -->
             <input type="range" id="sensitivitySlider" min="1" max="100" value="20">
         </div>
 
@@ -248,27 +246,20 @@ html_content = """<!DOCTYPE html>
         let lastFrameData = null;
         let isSirenActive = false;
         
-        // متغیرهای صوتی جدید (بدون خش)
+        // سیستم صوتی
         let audioCtx = null;
         let oscillator = null;
         let gainNode = null;
         let isBeeping = false;
 
-        // --- 1. سیستم صوتی پیشرفته (بدون نویز) ---
         function initAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                
-                // ایجاد یک اسیلاتور دائمی
                 oscillator = audioCtx.createOscillator();
                 gainNode = audioCtx.createGain();
-                
-                oscillator.type = 'square'; // صدای هشدار قوی
-                oscillator.frequency.value = 800; // فرکانس پایه
-                
-                // در ابتدا صدا قطع است (Gain = 0)
+                oscillator.type = 'square';
+                oscillator.frequency.value = 800; 
                 gainNode.gain.value = 0;
-                
                 oscillator.connect(gainNode);
                 gainNode.connect(audioCtx.destination);
                 oscillator.start();
@@ -278,20 +269,15 @@ html_content = """<!DOCTYPE html>
 
         function startBeep() {
             if (gainNode && !isBeeping) {
-                // افزایش نرم صدا برای جلوگیری از "تق"
                 gainNode.gain.setTargetAtTime(0.3, audioCtx.currentTime, 0.05);
-                
-                // افکت آژیر (تغییر فرکانس)
                 oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
                 oscillator.frequency.linearRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
-                
                 isBeeping = true;
             }
         }
 
         function stopBeep() {
             if (gainNode && isBeeping) {
-                // کاهش نرم صدا
                 gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
                 isBeeping = false;
             }
@@ -299,13 +285,11 @@ html_content = """<!DOCTYPE html>
 
         function toggleSiren() {
             isSirenActive = !isSirenActive;
-            initAudio(); // فعال‌سازی زمینه صوتی
-            
+            initAudio();
             if (isSirenActive) {
                 sirenBtn.classList.add('active');
                 sirenBtn.innerHTML = "🔔 آژیر فعال";
-                // تست کوتاه صدا
-                startBeep(); setTimeout(stopBeep, 150);
+                startBeep(); setTimeout(stopBeep, 150); // تست صدا
             } else {
                 sirenBtn.classList.remove('active');
                 sirenBtn.innerHTML = "🔕 آژیر خاموش";
@@ -313,17 +297,17 @@ html_content = """<!DOCTYPE html>
             }
         }
 
-        // --- 2. تنظیمات آستانه ---
+        // تنظیمات اسلایدر
         slider.addEventListener('input', updateThreshold);
 
         function updateThreshold() {
             const val = parseInt(slider.value);
             threshText.innerText = val;
-            threshLine.style.right = val + '%'; // حرکت از راست
+            // چون اسلایدر RTL است، عدد کم (راست) یعنی right کم. عدد زیاد (چپ) یعنی right زیاد.
+            threshLine.style.right = val + '%';
         }
-        updateThreshold();
+        updateThreshold(); // مقداردهی اولیه
 
-        // --- 3. دوربین ---
         async function startCamera() {
             if (stream) stream.getTracks().forEach(t => t.stop());
             try {
@@ -332,7 +316,7 @@ html_content = """<!DOCTYPE html>
                 });
                 video.srcObject = stream;
             } catch (err) {
-                alert("دسترسی به دوربین داده نشد.");
+                alert("دسترسی دوربین لازم است");
             }
         }
 
@@ -341,10 +325,10 @@ html_content = """<!DOCTYPE html>
             startCamera();
         }
 
-        // --- 4. پردازش تصویر (با حساسیت بالا) ---
         function processFrame() {
             if (video.readyState === 4) {
-                const w = 64; // کمی افزایش کیفیت تحلیل
+                // رزولوشن کم برای پردازش سریع
+                const w = 64; 
                 const h = 48;
                 canvas.width = w; canvas.height = h;
                 
@@ -354,41 +338,44 @@ html_content = """<!DOCTYPE html>
 
                 if (lastFrameData) {
                     const oldData = lastFrameData.data;
-                    let diffScore = 0;
-
-                    // حلقه روی پیکسل‌ها
+                    let changedPixels = 0;
+                    
+                    // حلقه بررسی پیکسل‌ها
                     for (let i = 0; i < data.length; i += 4) {
                         const rDiff = Math.abs(data[i] - oldData[i]);
                         const gDiff = Math.abs(data[i+1] - oldData[i+1]);
                         const bDiff = Math.abs(data[i+2] - oldData[i+2]);
                         
-                        // حساسیت تشخیص پیکسل را بالا بردیم (از 80 به 30 رساندیم)
-                        if ((rDiff + gDiff + bDiff) > 30) {
-                            diffScore++;
+                        // کاهش آستانه به 15 برای تشخیص حرکت در نور کم (ماشین/شب)
+                        if ((rDiff + gDiff + bDiff) > 15) {
+                            changedPixels++;
                         }
                     }
 
-                    // فرمول جدید و بسیار حساس برای محاسبه درصد
-                    // تعداد کل پیکسل‌ها حدود 3000 است. 
-                    // تقسیم بر 5 می‌کنیم تا با تغییرات کم هم درصد بالا برود.
-                    let motionVal = Math.min(Math.floor(diffScore / 5), 100);
+                    // محاسبه درصد واقعی
+                    // کل پیکسل‌ها = 3072
+                    const totalPixels = w * h;
+                    let motionPercent = (changedPixels / totalPixels) * 100;
                     
-                    // جلوگیری از نویزهای خیلی ریز (زیر 2 درصد را صفر کن)
-                    if (motionVal < 2) motionVal = 0;
+                    // تقویت ضریب برای نمایش بهتر (حرکت کوچک هم دیده شود)
+                    // ضرب در 8 می‌کنیم تا حساسیت بصری بالا رود
+                    let motionVal = Math.floor(motionPercent * 8); 
+                    
+                    if (motionVal > 100) motionVal = 100;
+                    if (motionVal < 0) motionVal = 0;
 
                     motionText.innerText = motionVal;
                     motionFill.style.width = motionVal + '%';
 
                     const thresholdVal = parseInt(slider.value);
                     
-                    // بررسی آژیر
                     if (motionVal > thresholdVal) {
                         alarmLayer.style.display = "block";
-                        motionFill.style.background = "#ff453a"; // نوار قرمز می‌شود
+                        motionFill.style.background = "#ff453a"; 
                         if (isSirenActive) startBeep();
                     } else {
                         alarmLayer.style.display = "none";
-                        motionFill.style.background = "#32d74b"; // نوار سبز می‌شود
+                        motionFill.style.background = "#32d74b";
                         stopBeep();
                     }
                 }
@@ -407,9 +394,9 @@ html_content = """<!DOCTYPE html>
 try:
     with open(target_file_path, "w", encoding="utf-8") as f:
         f.write(html_content)
-    print("✅ فایل اصلاح شد:")
-    print("1. حساسیت تشخیص حرکت ۱۰ برابر شد (مشکل عدد ۰ حل شد).")
-    print("2. سیستم صوتی با GainNode بازنویسی شد (مشکل خرخر حل شد).")
-    print("3. جهت حرکت گراف کاملاً راست‌چین شد.")
+    print("✅ اصلاحات نهایی انجام شد:")
+    print("1. جهت اسلایدر اصلاح شد: کشیدن به چپ = حرکت خط قرمز به چپ.")
+    print("2. مشکل عدد 0 حل شد: حساسیت دید در شب فعال شد.")
+    print("3. خط سبز حالا با کوچکترین حرکت پر می‌شود.")
 except Exception as e:
-    print(f"❌ خطا: {e}")
+    print(f"❌ خطا: {
