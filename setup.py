@@ -1,139 +1,236 @@
 import os
 
-# ---------------------------------------------------------
-# تنظیمات اولیه
-# ---------------------------------------------------------
-print("🚀 STARTING: Naming Convention Fix (index_FolderName)...")
+# Define the target file path
+target_file_path = "tools/doorbin-tashkhis-harekat/index_doorbin-tashkhis-harekat.html"
 
-DIR_TOOLS = "tools"
-DIR_CAMERA = "doorbin-tashkhis-harekat"
-
-path_tools_dir = DIR_TOOLS
-path_camera_dir = os.path.join(DIR_TOOLS, DIR_CAMERA)
-
-# نام‌های جدید
-NEW_CAMERA_FILE = f"index_{DIR_CAMERA}.html"
-NEW_TOOLS_FILE = f"index_{DIR_TOOLS}.html"
-
-# ---------------------------------------------------------
-# 1. اصلاح نام فایل دوربین
-# ---------------------------------------------------------
-print(f"\n🔹 Step 1: Fixing Camera Folder...")
-
-if os.path.exists(path_camera_dir):
-    current_camera_path = os.path.join(path_camera_dir, "index.html")
-    target_camera_path = os.path.join(path_camera_dir, NEW_CAMERA_FILE)
-
-    if os.path.exists(current_camera_path):
-        try:
-            os.rename(current_camera_path, target_camera_path)
-            print(f"   ✅ Renamed: index.html -> {NEW_CAMERA_FILE}")
-        except Exception as e:
-            print(f"   ❌ Error renaming: {e}")
-    elif os.path.exists(target_camera_path):
-        print(f"   ℹ️ File already renamed.")
-    else:
-        print("   ⚠️ No index.html found (check manually).")
-else:
-    print(f"   ⚠️ Directory missing: {path_camera_dir}")
-
-# ---------------------------------------------------------
-# 2. ساخت مجدد فایل تولز (index_tools.html)
-# ---------------------------------------------------------
-print(f"\n🔹 Step 2: Rebuilding {NEW_TOOLS_FILE}...")
-
-if not os.path.exists(path_tools_dir):
-    os.makedirs(path_tools_dir)
-
-# پاکسازی فایل‌های قدیمی
-for old_file in ["index.html", "tools.html"]:
-    old_path = os.path.join(path_tools_dir, old_file)
-    if os.path.exists(old_path):
-        os.remove(old_path)
-
-# لینک به دوربین
-link_to_camera = f"{DIR_CAMERA}/{NEW_CAMERA_FILE}"
-
-buttons_html = ""
-for i in range(1, 21):
-    if i == 1:
-        buttons_html += f"""
-        <a href="{link_to_camera}" class="tool-btn active">
-            📷 دوربین تشخیص حرکت
-        </a>"""
-    else:
-        buttons_html += f"""
-        <div class="tool-btn disabled">
-            ابزار شماره {i}
-        </div>"""
-
-tools_content = f"""<!DOCTYPE html>
+# The complete HTML content with integrated Web Audio API siren
+html_content = """<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لیست ابزارها</title>
+    <title>دوربین تشخیص حرکت + آژیر دیجیتال</title>
     <style>
-        body {{ font-family: system-ui, -apple-system, sans-serif; background: #1a1a1a; color: white; padding: 20px; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }}
-        h2 {{ margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 10px; }}
-        .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px; width: 100%; max-width: 800px; }}
-        .tool-btn {{ background: #333; color: #888; border: 1px solid #444; padding: 15px; border-radius: 12px; text-align: center; text-decoration: none; font-size: 14px; display: flex; align-items: center; justify-content: center; min-height: 80px; transition: 0.2s; cursor: default; }}
-        .tool-btn.active {{ background: #28a745; color: white; border-color: #1e7e34; cursor: pointer; font-weight: bold; font-size: 16px; box-shadow: 0 4px 10px rgba(40, 167, 69, 0.3); }}
-        .tool-btn.active:hover {{ background: #218838; transform: translateY(-2px); }}
-        .tool-btn.disabled {{ opacity: 0.5; }}
-        .back-link {{ margin-top: 40px; color: #aaa; text-decoration: none; padding: 10px 20px; border: 1px solid #444; border-radius: 8px; }}
-        .back-link:hover {{ background: #333; color: white; }}
+        body { font-family: system-ui; background: #000; color: white; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
+        
+        .video-container { position: relative; width: 100%; max-width: 640px; margin-bottom: 20px; border: 2px solid #333; border-radius: 10px; overflow: hidden; }
+        video, canvas { width: 100%; height: auto; display: block; }
+        canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
+        
+        .controls { width: 100%; max-width: 640px; background: #222; padding: 20px; border-radius: 12px; display: flex; flex-direction: column; gap: 15px; }
+        
+        .control-row { display: flex; justify-content: space-between; align-items: center; }
+        
+        input[type=range] { width: 60%; }
+        
+        #sirenBtn {
+            background: #444; color: #aaa; border: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; display: flex; align-items: center; gap: 8px; font-size: 16px; width: 100%; justify-content: center;
+        }
+        #sirenBtn.active {
+            background: #dc3545; color: white; animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        }
+
+        .status { font-size: 14px; color: #888; margin-top: 5px; text-align: center; }
+        .back-link { margin-top: 30px; color: #666; text-decoration: none; }
     </style>
 </head>
 <body>
-    <h2>🛠 جعبه ابزار (۲۰ آیتم)</h2>
-    <div class="grid">
-        {buttons_html}
+
+    <div class="video-container">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="canvas"></canvas>
     </div>
-    <a href="../index.html" class="back-link">⬅️ بازگشت به صفحه اصلی</a>
+
+    <div class="controls">
+        <div class="control-row">
+            <span>حساسیت: <span id="valDisplay">20</span></span>
+            <input type="range" id="sensitivity" min="5" max="100" value="20">
+        </div>
+
+        <button id="sirenBtn" onclick="toggleSiren()">
+            🔕 آژیر خاموش است
+        </button>
+        
+        <div class="status" id="motionStatus">وضعیت: عادی</div>
+    </div>
+
+    <a href="../index_tools.html" class="back-link">⬅️ بازگشت به ابزارها</a>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const statusEl = document.getElementById('motionStatus');
+        const rangeEl = document.getElementById('sensitivity');
+        const valDisplay = document.getElementById('valDisplay');
+        const sirenBtn = document.getElementById('sirenBtn');
+
+        let isSirenEnabled = false;
+        let lastFrameData = null;
+        let diffCanvas = document.createElement('canvas');
+        let diffCtx = diffCanvas.getContext('2d');
+        let motionTimeout;
+        
+        // --- تنظیمات سیستم صوتی (Web Audio API) ---
+        let audioCtx;
+        let oscillator = null;
+        let gainNode = null;
+
+        // تابع راه‌اندازی سیستم صوتی
+        function initAudioContext() {
+            if (!audioCtx) {
+                // پشتیبانی از مرورگرهای جدید و سافاری قدیمی
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            }
+            // اگر مرورگر صدا را غیرفعال کرده باشد، آن را فعال می‌کنیم
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function startBeep() {
+            if (oscillator) return; // اگر صدا در حال پخش است، دوباره شروع نکن
+
+            initAudioContext();
+            
+            oscillator = audioCtx.createOscillator();
+            gainNode = audioCtx.createGain();
+
+            // نوع موج صدا (sawtooth صدای خشن‌تر و شبیه دزدگیر دارد)
+            oscillator.type = 'sawtooth'; 
+            oscillator.frequency.setValueAtTime(800, audioCtx.currentTime); // فرکانس شروع
+            
+            // افکت آژیر (تغییر فرکانس)
+            oscillator.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
+            oscillator.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.2);
+            
+            // اتصال گره‌ها
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            oscillator.start();
+        }
+
+        function stopBeep() {
+            if (oscillator) {
+                try {
+                    oscillator.stop();
+                    oscillator.disconnect();
+                } catch(e) {}
+                oscillator = null;
+            }
+        }
+        // ---------------------------------------------
+
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+            .then(stream => { video.srcObject = stream; })
+            .catch(err => console.error("دسترسی به دوربین داده نشد", err));
+
+        rangeEl.addEventListener('input', (e) => {
+            valDisplay.innerText = e.target.value;
+        });
+
+        function toggleSiren() {
+            // برای فعال کردن AudioContext در مرورگرهای موبایل، حتما باید داخل رویداد کلیک باشد
+            initAudioContext(); 
+            
+            isSirenEnabled = !isSirenEnabled;
+            if (isSirenEnabled) {
+                sirenBtn.classList.add('active');
+                sirenBtn.innerHTML = "🔔 آژیر فعال است (آماده هشدار)";
+                // یک صدای خیلی کوتاه تست پخش می‌کنیم تا قفل صدای مرورگر باز شود
+                startBeep();
+                setTimeout(stopBeep, 50); 
+            } else {
+                sirenBtn.classList.remove('active');
+                sirenBtn.innerHTML = "🔕 آژیر خاموش است";
+                stopBeep();
+            }
+        }
+
+        function processVideo() {
+            if (video.readyState === 4) {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                diffCanvas.width = 64; 
+                diffCanvas.height = 48;
+
+                diffCtx.drawImage(video, 0, 0, 64, 48);
+                let currentFrameData = diffCtx.getImageData(0, 0, 64, 48);
+
+                if (lastFrameData) {
+                    let score = 0;
+                    for (let i = 0; i < currentFrameData.data.length; i += 4) {
+                        let rDiff = Math.abs(currentFrameData.data[i] - lastFrameData.data[i]);
+                        let gDiff = Math.abs(currentFrameData.data[i+1] - lastFrameData.data[i+1]);
+                        let bDiff = Math.abs(currentFrameData.data[i+2] - lastFrameData.data[i+2]);
+                        
+                        if (rDiff + gDiff + bDiff > 100) { 
+                            score++;
+                        }
+                    }
+
+                    let threshold = (105 - rangeEl.value) * 10; 
+
+                    if (score > threshold) {
+                        onMotionDetected();
+                    } else {
+                        // اگر حرکتی نیست، صدا را قطع کن
+                        if (isSirenEnabled && oscillator) {
+                            // صدا با تایمر پایین قطع می‌شود
+                        }
+                    }
+                }
+
+                lastFrameData = currentFrameData;
+            }
+            requestAnimationFrame(processVideo);
+        }
+
+        function onMotionDetected() {
+            statusEl.innerText = "⚠️ حرکت تشخیص داده شد!";
+            statusEl.style.color = "#ff4444";
+            
+            ctx.strokeStyle = "red";
+            ctx.lineWidth = 10;
+            ctx.strokeRect(0, 0, canvas.width, canvas.height);
+
+            // پخش آژیر اگر دکمه فعال باشد
+            if (isSirenEnabled) {
+                startBeep();
+            }
+
+            clearTimeout(motionTimeout);
+            motionTimeout = setTimeout(() => {
+                statusEl.innerText = "وضعیت: عادی";
+                statusEl.style.color = "#888";
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // قطع صدا وقتی حرکت تمام شد
+                stopBeep();
+            }, 300); // قطع صدا 300 میلی ثانیه بعد از آخرین فریم حرکت
+        }
+
+        video.addEventListener('play', processVideo);
+    </script>
 </body>
-</html>
-"""
+</html>"""
 
-with open(os.path.join(path_tools_dir, NEW_TOOLS_FILE), "w", encoding="utf-8") as f:
-    f.write(tools_content)
-print(f"   ✅ Created: {NEW_TOOLS_FILE}")
-
-# ---------------------------------------------------------
-# 3. آپدیت فایل ریشه (index.html)
-# ---------------------------------------------------------
-print(f"\n🔹 Step 3: Updating Root index.html...")
-
-link_to_tools = f"{DIR_TOOLS}/{NEW_TOOLS_FILE}"
-
-root_content = f"""<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>صفحه اصلی</title>
-    <style>
-        body {{ font-family: system-ui, -apple-system, sans-serif; background: #111; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; gap: 20px; }}
-        h1 {{ margin-bottom: 40px; }}
-        .menu-btn {{ background: #007bff; color: white; border: none; padding: 20px 40px; width: 80%; max-width: 300px; font-size: 20px; font-weight: bold; border-radius: 15px; cursor: pointer; text-decoration: none; display: flex; align-items: center; justify-content: center; transition: background 0.2s; box-shadow: 0 4px 15px rgba(0,123,255,0.3); }}
-        .menu-btn:hover {{ background: #0056b3; }}
-        .footer {{ margin-top: 50px; color: #666; font-size: 14px; }}
-    </style>
-</head>
-<body>
-    <h1>اپلیکیشن من</h1>
-    
-    <a href="{link_to_tools}" class="menu-btn">
-        📂 ورود به ابزارها
-    </a>
-
-    <div class="footer">نسخه نهایی - ساختار استاندارد</div>
-</body>
-</html>
-"""
-
-with open("index.html", "w", encoding="utf-8") as f:
-    f.write(root_content)
-
-print("   ✅ Updated: Root index.html")
-print("\n🎉 DONE. No indentation errors possible!")
+# Write the content to the file
+try:
+    with open(target_file_path, "w", encoding="utf-8") as f:
+        f.write(html_content)
+    print(f"✅ فایل {target_file_path} با موفقیت به‌روزرسانی شد.")
+    print("ویژگی آژیر دیجیتال (بدون فایل صوتی خارجی) اضافه شد.")
+except FileNotFoundError:
+    print(f"❌ خطا: مسیر {target_file_path} پیدا نشد.")
+    print("لطفاً مطمئن شوید که ساختار پوشه‌ها درست است.")
+except Exception as e:
+    print(f"❌ خطای غیرمنتظره: {e}")
