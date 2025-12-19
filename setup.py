@@ -45,7 +45,7 @@ html_content = """<!DOCTYPE html>
             box-shadow: inset 0 0 50px red;
         }
 
-        /* پنل کنترل مشابه عکس ارسالی */
+        /* پنل کنترل */
         .control-panel {
             width: 100%;
             max-width: 600px;
@@ -55,7 +55,7 @@ html_content = """<!DOCTYPE html>
             box-sizing: border-box;
         }
 
-        /* بخش گراف حرکت (خط کش و نوار) */
+        /* بخش گراف حرکت */
         .motion-graph-wrapper {
             position: relative;
             margin-bottom: 5px;
@@ -67,6 +67,8 @@ html_content = """<!DOCTYPE html>
             position: relative;
             border-radius: 3px;
             overflow: hidden;
+            /* جهت را صریحاً RTL می‌کنیم تا 0 سمت راست باشد */
+            direction: rtl; 
         }
         
         /* نوار سبز میزان حرکت */
@@ -75,6 +77,7 @@ html_content = """<!DOCTYPE html>
             width: 0%;
             background: #4caf50; /* سبز */
             transition: width 0.1s linear;
+            /* چون در RTL هستیم، خود به خود از راست پر می‌شود */
         }
 
         /* خط قرمز آستانه */
@@ -85,7 +88,8 @@ html_content = """<!DOCTYPE html>
             width: 2px;
             background: #ff3b30; /* قرمز */
             z-index: 10;
-            transition: left 0.1s;
+            /* تغییر مهم: انیمیشن روی right */
+            transition: right 0.1s; 
         }
 
         /* اعداد زیر نوار (0 تا 100) */
@@ -96,6 +100,7 @@ html_content = """<!DOCTYPE html>
             font-size: 10px;
             margin-top: 2px;
             padding: 0 2px;
+            direction: ltr; /* اعداد را چپ به راست می‌چینیم تا 100 سمت چپ و 0 سمت راست بیفتد */
         }
 
         /* نمایش اعداد آستانه و حرکت */
@@ -125,6 +130,7 @@ html_content = """<!DOCTYPE html>
             background: #333;
             outline: none;
             -webkit-appearance: none;
+            direction: ltr; /* اسلایدر استاندارد */
         }
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none;
@@ -164,7 +170,7 @@ html_content = """<!DOCTYPE html>
             flex: 1;
         }
 
-        .btn-cam { background: #3a3a3c; } /* خاکستری تیره */
+        .btn-cam { background: #3a3a3c; } 
         .btn-cam:active { background: #555; }
 
         .btn-siren { background: #3a3a3c; color: #aaa; border: 1px solid #444; }
@@ -197,10 +203,12 @@ html_content = """<!DOCTYPE html>
         <div class="motion-graph-wrapper">
             <div class="motion-track">
                 <div id="motionFill" class="motion-fill"></div>
-                <div id="threshLine" class="threshold-line" style="left: 50%;"></div>
+                <!-- خط قرمز حالا بر اساس right پوزیشن می‌گیرد -->
+                <div id="threshLine" class="threshold-line" style="right: 50%;"></div>
             </div>
+            <!-- اعداد: 100 سمت چپ، 0 سمت راست -->
             <div class="scale-numbers">
-                <span>0</span><span>20</span><span>40</span><span>60</span><span>80</span><span>100</span>
+                <span>100</span><span>80</span><span>60</span><span>40</span><span>20</span><span>0</span>
             </div>
         </div>
 
@@ -213,7 +221,8 @@ html_content = """<!DOCTYPE html>
         <!-- اسلایدر حساسیت -->
         <div class="slider-container">
             <span class="slider-label">حساسیت:</span>
-            <input type="range" id="sensitivitySlider" min="1" max="100" value="50">
+            <!-- مقدار پیش‌فرض 20 برای تست راحتی -->
+            <input type="range" id="sensitivitySlider" min="1" max="100" value="20">
         </div>
 
         <!-- دکمه‌ها -->
@@ -252,7 +261,7 @@ html_content = """<!DOCTYPE html>
         let oscillator = null;
         let alarmTimeout;
 
-        // --- 1. تنظیمات صدا (آژیر دیجیتال) ---
+        // --- 1. تنظیمات صدا ---
         function initAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -266,12 +275,12 @@ html_content = """<!DOCTYPE html>
             oscillator = audioCtx.createOscillator();
             const gainNode = audioCtx.createGain();
             
-            oscillator.type = 'sawtooth'; // صدای تیزتر
+            oscillator.type = 'sawtooth';
             oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
-            oscillator.frequency.linearRampToValueAtTime(1200, audioCtx.currentTime + 0.1); // افکت آژیر
+            oscillator.frequency.linearRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
             oscillator.frequency.linearRampToValueAtTime(800, audioCtx.currentTime + 0.2);
 
-            gainNode.gain.value = 0.2; // حجم صدا
+            gainNode.gain.value = 0.2;
             
             oscillator.connect(gainNode);
             gainNode.connect(audioCtx.destination);
@@ -287,11 +296,11 @@ html_content = """<!DOCTYPE html>
 
         function toggleSiren() {
             isSirenActive = !isSirenActive;
-            initAudio(); // اطمینان از آماده بودن صدا
+            initAudio();
             if (isSirenActive) {
                 sirenBtn.classList.add('active');
                 sirenBtn.innerHTML = "🔔 آژیر فعال";
-                playBeep(); setTimeout(stopBeep, 200); // صدای تست کوتاه
+                playBeep(); setTimeout(stopBeep, 200); 
             } else {
                 sirenBtn.classList.remove('active');
                 sirenBtn.innerHTML = "🔕 آژیر خاموش";
@@ -299,17 +308,18 @@ html_content = """<!DOCTYPE html>
             }
         }
 
-        // --- 2. منطق اسلایدر و آستانه ---
-        // طبق عکس: وقتی اسلایدر زیاد میشود، خط قرمز هم جلو میرود.
-        // یعنی اسلایدر مستقیماً مقدار آستانه (Threshold) را تعیین می‌کند.
+        // --- 2. منطق اسلایدر و آستانه (اصلاح جهت حرکت) ---
         slider.addEventListener('input', updateThreshold);
 
         function updateThreshold() {
             const val = parseInt(slider.value);
             threshText.innerText = val;
-            threshLine.style.left = val + '%'; // حرکت خط قرمز روی نوار
+            
+            // اصلاح مهم: استفاده از right به جای left
+            // چون نمودار ما از راست (0) شروع می‌شود
+            threshLine.style.right = val + '%'; 
         }
-        updateThreshold(); // مقدار اولیه
+        updateThreshold(); 
 
         // --- 3. دوربین ---
         async function startCamera() {
@@ -329,10 +339,10 @@ html_content = """<!DOCTYPE html>
             startCamera();
         }
 
-        // --- 4. پردازش تصویر و تشخیص حرکت ---
+        // --- 4. پردازش تصویر ---
         function processFrame() {
             if (video.readyState === 4) {
-                const w = 50; // رزولوشن پایین برای سرعت بالا
+                const w = 50; 
                 const h = 50;
                 canvas.width = w; canvas.height = h;
                 
@@ -344,7 +354,6 @@ html_content = """<!DOCTYPE html>
                     const oldData = lastFrameData.data;
                     let diffScore = 0;
 
-                    // مقایسه پیکسل‌ها
                     for (let i = 0; i < data.length; i += 4) {
                         const diff = Math.abs(data[i] - oldData[i]) +
                                      Math.abs(data[i+1] - oldData[i+1]) +
@@ -352,15 +361,13 @@ html_content = """<!DOCTYPE html>
                         if (diff > 80) diffScore++;
                     }
 
-                    // نرمال‌سازی عدد حرکت بین 0 تا 100
-                    // عدد 400 تجربی است (حساسیت کلی الگوریتم)
+                    // عدد 400 حساسیت کلی است
                     let motionVal = Math.min(Math.floor((diffScore / 400) * 100), 100);
                     
-                    // آپدیت UI
                     motionText.innerText = motionVal;
                     motionFill.style.width = motionVal + '%';
 
-                    // منطق آژیر: اگر حرکت (سبز) از آستانه (قرمز) رد شد
+                    // مقایسه با آستانه
                     const thresholdVal = parseInt(slider.value);
                     
                     if (motionVal > thresholdVal) {
@@ -376,7 +383,7 @@ html_content = """<!DOCTYPE html>
 
         function triggerAlarm() {
             alarmLayer.style.display = "block";
-            motionFill.style.background = "#ff3b30"; // نوار سبز قرمز می‌شود
+            motionFill.style.background = "#ff3b30";
             
             if (isSirenActive) {
                 playBeep();
@@ -388,11 +395,10 @@ html_content = """<!DOCTYPE html>
 
         function stopAlarmVisuals() {
             alarmLayer.style.display = "none";
-            motionFill.style.background = "#4caf50"; // برگشت به سبز
+            motionFill.style.background = "#4caf50";
             stopBeep();
         }
 
-        // شروع برنامه
         startCamera();
         video.addEventListener('play', processFrame);
 
@@ -403,7 +409,6 @@ html_content = """<!DOCTYPE html>
 try:
     with open(target_file_path, "w", encoding="utf-8") as f:
         f.write(html_content)
-    print("✅ فایل دقیقاً مطابق عکس IMG_5672 بازسازی شد.")
-    print("ویژگی‌ها: گراف خط‌کشی شده، خط قرمز آستانه متحرک، دکمه جدید آژیر.")
+    print("✅ فایل با اصلاح جهت خط قرمز (راست به چپ) بازنویسی شد.")
 except Exception as e:
     print(f"❌ خطا: {e}")
