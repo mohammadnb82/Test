@@ -3,55 +3,125 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>دوربین تشخیص حرکت + آژیر دیجیتال</title>
+    <title>دوربین هوشمند تشخیص حرکت</title>
     <style>
-        body { font-family: system-ui; background: #000; color: white; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
-        
-        .video-container { position: relative; width: 100%; max-width: 640px; margin-bottom: 20px; border: 2px solid #333; border-radius: 10px; overflow: hidden; }
-        video, canvas { width: 100%; height: auto; display: block; }
-        canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
-        
-        .controls { width: 100%; max-width: 640px; background: #222; padding: 20px; border-radius: 12px; display: flex; flex-direction: column; gap: 15px; }
-        
-        .control-row { display: flex; justify-content: space-between; align-items: center; }
-        
-        input[type=range] { width: 60%; }
-        
-        #sirenBtn {
-            background: #444; color: #aaa; border: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; display: flex; align-items: center; gap: 8px; font-size: 16px; width: 100%; justify-content: center;
-        }
-        #sirenBtn.active {
-            background: #dc3545; color: white; animation: pulse 2s infinite;
+        body { 
+            font-family: system-ui, -apple-system, sans-serif; 
+            background: #000; 
+            color: white; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            min-height: 100vh; 
+            margin: 0; 
+            padding: 10px; 
+            box-sizing: border-box; 
         }
         
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        .video-wrapper { 
+            position: relative; 
+            width: 100%; 
+            max-width: 600px; 
+            border: 2px solid #333; 
+            border-radius: 12px; 
+            overflow: hidden; 
+            background: #111; 
+            aspect-ratio: 4/3; 
+        }
+        
+        video { width: 100%; height: 100%; object-fit: cover; display: block; }
+        canvas { display: none; } 
+        
+        #alarmOverlay {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255, 0, 0, 0.3); border: 4px solid red;
+            display: none; pointer-events: none; z-index: 10;
         }
 
-        .status { font-size: 14px; color: #888; margin-top: 5px; text-align: center; }
-        .back-link { margin-top: 30px; color: #666; text-decoration: none; }
+        .controls { 
+            width: 100%; 
+            max-width: 600px; 
+            background: #1a1a1a; 
+            padding: 15px; 
+            border-radius: 15px; 
+            margin-top: 15px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 15px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); 
+        }
+        
+        .row { display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 10px; }
+        
+        label { font-size: 14px; color: #ccc; white-space: nowrap; }
+        
+        input[type=range] { flex-grow: 1; height: 6px; border-radius: 5px; background: #444; outline: none; }
+
+        /* استایل نوار میزان حرکت */
+        .motion-meter-container { 
+            width: 100%; height: 8px; background: #333; border-radius: 4px; overflow: hidden; margin-top: 5px; 
+        }
+        .motion-meter-fill { 
+            height: 100%; width: 0%; background: #0f0; transition: width 0.1s linear, background 0.2s; 
+        }
+        
+        /* دکمه‌ها */
+        .btn { 
+            border: none; padding: 12px; border-radius: 10px; font-weight: bold; font-size: 14px; cursor: pointer; flex: 1; 
+            display: flex; align-items: center; justify-content: center; gap: 5px; transition: 0.2s; color: white;
+        }
+        
+        .btn-camera { background: #333; border: 1px solid #444; }
+        .btn-camera:active { background: #555; }
+
+        .btn-siren { background: #222; border: 1px solid #444; color: #aaa; }
+        .btn-siren.active { background: #dc3545; color: white; border-color: #dc3545; animation: pulse 1s infinite; }
+        
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+
+        .status-text { text-align: center; color: #888; font-size: 13px; margin-top: 5px; }
+        .back-link { margin-top: 20px; color: #666; text-decoration: none; font-size: 14px; }
     </style>
 </head>
 <body>
 
-    <div class="video-container">
+    <div class="video-wrapper">
         <video id="video" autoplay playsinline muted></video>
-        <canvas id="canvas"></canvas>
+        <div id="alarmOverlay"></div>
     </div>
+    <canvas id="canvas"></canvas>
 
     <div class="controls">
-        <div class="control-row">
-            <span>حساسیت: <span id="valDisplay">20</span></span>
+        <!-- ردیف اول: اسلایدر حساسیت -->
+        <div class="row">
+            <label>حساسیت (<span id="sensVal">20</span>):</label>
             <input type="range" id="sensitivity" min="5" max="100" value="20">
         </div>
 
-        <button id="sirenBtn" onclick="toggleSiren()">
-            🔕 آژیر خاموش است
-        </button>
-        
-        <div class="status" id="motionStatus">وضعیت: عادی</div>
+        <!-- ردیف دوم: نوار سبز رنگ (موشن بار) -->
+        <div>
+            <div class="row" style="margin-bottom: 2px;">
+                <label style="font-size: 12px; color: #888;">میزان حرکت:</label>
+            </div>
+            <div class="motion-meter-container">
+                <div id="motionBar" class="motion-meter-fill"></div>
+            </div>
+        </div>
+
+        <!-- ردیف سوم: دکمه‌ها (دوربین + آژیر) -->
+        <div class="row">
+            <!-- دکمه تغییر دوربین که حذف شده بود -->
+            <button class="btn btn-camera" onclick="switchCamera()">
+                📷 چرخش دوربین
+            </button>
+            
+            <!-- دکمه آژیر -->
+            <button id="sirenBtn" class="btn btn-siren" onclick="toggleSiren()">
+                🔕 آژیر خاموش
+            </button>
+        </div>
+
+        <div class="status-text" id="status">وضعیت: عادی</div>
     </div>
 
     <a href="../index_tools.html" class="back-link">⬅️ بازگشت به ابزارها</a>
@@ -60,159 +130,158 @@
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        const statusEl = document.getElementById('motionStatus');
-        const rangeEl = document.getElementById('sensitivity');
-        const valDisplay = document.getElementById('valDisplay');
+        const alarmOverlay = document.getElementById('alarmOverlay');
+        const motionBar = document.getElementById('motionBar');
+        const statusEl = document.getElementById('status');
+        const sensInput = document.getElementById('sensitivity');
+        const sensVal = document.getElementById('sensVal');
         const sirenBtn = document.getElementById('sirenBtn');
 
-        let isSirenEnabled = false;
+        let currentFacingMode = 'environment'; // دوربین پشت پیش‌فرض
+        let stream = null;
         let lastFrameData = null;
-        let diffCanvas = document.createElement('canvas');
-        let diffCtx = diffCanvas.getContext('2d');
-        let motionTimeout;
-        
-        // --- تنظیمات سیستم صوتی (Web Audio API) ---
+        let isSirenEnabled = false;
+        let alarmTimeout;
+
+        // --- صدای آژیر دیجیتال ---
         let audioCtx;
         let oscillator = null;
-        let gainNode = null;
-
-        // تابع راه‌اندازی سیستم صوتی
-        function initAudioContext() {
+        
+        function initAudio() {
             if (!audioCtx) {
-                // پشتیبانی از مرورگرهای جدید و سافاری قدیمی
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                audioCtx = new AudioContext();
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             }
-            // اگر مرورگر صدا را غیرفعال کرده باشد، آن را فعال می‌کنیم
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
         }
 
-        function startBeep() {
-            if (oscillator) return; // اگر صدا در حال پخش است، دوباره شروع نکن
-
-            initAudioContext();
-            
+        function playBeep() {
+            if (oscillator) return; 
+            initAudio();
             oscillator = audioCtx.createOscillator();
-            gainNode = audioCtx.createGain();
-
-            // نوع موج صدا (sawtooth صدای خشن‌تر و شبیه دزدگیر دارد)
-            oscillator.type = 'sawtooth'; 
-            oscillator.frequency.setValueAtTime(800, audioCtx.currentTime); // فرکانس شروع
+            const gainNode = audioCtx.createGain();
             
-            // افکت آژیر (تغییر فرکانس)
-            oscillator.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
-            oscillator.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.2);
+            oscillator.type = 'square';
+            oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+            oscillator.frequency.linearRampToValueAtTime(1500, audioCtx.currentTime + 0.1);
             
-            // اتصال گره‌ها
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            
             oscillator.connect(gainNode);
             gainNode.connect(audioCtx.destination);
-            
             oscillator.start();
         }
 
         function stopBeep() {
             if (oscillator) {
-                try {
-                    oscillator.stop();
-                    oscillator.disconnect();
-                } catch(e) {}
+                try { oscillator.stop(); oscillator.disconnect(); } catch(e){}
                 oscillator = null;
             }
         }
-        // ---------------------------------------------
+        // -------------------------
 
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-            .then(stream => { video.srcObject = stream; })
-            .catch(err => console.error("دسترسی به دوربین داده نشد", err));
+        async function startCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+            try {
+                // درخواست دوربین با facingMode متغیر
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: currentFacingMode } 
+                });
+                video.srcObject = stream;
+            } catch (err) {
+                console.error("Camera Error:", err);
+                statusEl.innerText = "خطا در دسترسی به دوربین";
+            }
+        }
 
-        rangeEl.addEventListener('input', (e) => {
-            valDisplay.innerText = e.target.value;
-        });
+        // تابع تغییر دوربین
+        function switchCamera() {
+            currentFacingMode = (currentFacingMode === 'environment') ? 'user' : 'environment';
+            startCamera();
+        }
 
-        function toggleSiren() {
-            // برای فعال کردن AudioContext در مرورگرهای موبایل، حتما باید داخل رویداد کلیک باشد
-            initAudioContext(); 
+        function processFrame() {
+            if (video.readyState === 4) {
+                const w = 64; 
+                const h = 48;
+                canvas.width = w; canvas.height = h;
+                
+                ctx.drawImage(video, 0, 0, w, h);
+                const currentData = ctx.getImageData(0, 0, w, h);
+
+                if (lastFrameData) {
+                    let movementScore = 0;
+                    const data = currentData.data;
+                    const oldData = lastFrameData.data;
+
+                    for (let i = 0; i < data.length; i += 4) {
+                        const diff = Math.abs(data[i] - oldData[i]) + 
+                                     Math.abs(data[i+1] - oldData[i+1]) + 
+                                     Math.abs(data[i+2] - oldData[i+2]);
+                        if (diff > 50) movementScore++;
+                    }
+
+                    // آپدیت نوار گرافیکی حرکت
+                    let barPercent = Math.min((movementScore / 300) * 100, 100);
+                    motionBar.style.width = barPercent + "%";
+                    if (barPercent > 40) motionBar.style.background = "#ff3333";
+                    else motionBar.style.background = "#00ff00";
+
+                    // بررسی آستانه هشدار
+                    const sensitivity = parseInt(sensInput.value);
+                    const threshold = (105 - sensitivity) * 5;
+
+                    if (movementScore > threshold) {
+                        triggerAlarm();
+                    } else {
+                        stopAlarmVisuals();
+                    }
+                }
+                lastFrameData = currentData;
+            }
+            requestAnimationFrame(processFrame);
+        }
+
+        function triggerAlarm() {
+            statusEl.innerText = "⚠️ حرکت تشخیص داده شد!";
+            statusEl.style.color = "#ff4444";
+            alarmOverlay.style.display = "block";
+
+            if (isSirenEnabled) {
+                playBeep();
+            }
             
+            clearTimeout(alarmTimeout);
+            alarmTimeout = setTimeout(stopAlarmVisuals, 200);
+        }
+
+        function stopAlarmVisuals() {
+            statusEl.innerText = "وضعیت: عادی";
+            statusEl.style.color = "#888";
+            alarmOverlay.style.display = "none";
+            stopBeep();
+        }
+
+        // رویدادها
+        sensInput.addEventListener('input', (e) => sensVal.innerText = e.target.value);
+        
+        function toggleSiren() {
+            initAudio(); // فعال‌سازی Context با کلیک کاربر
             isSirenEnabled = !isSirenEnabled;
             if (isSirenEnabled) {
                 sirenBtn.classList.add('active');
-                sirenBtn.innerHTML = "🔔 آژیر فعال است (آماده هشدار)";
-                // یک صدای خیلی کوتاه تست پخش می‌کنیم تا قفل صدای مرورگر باز شود
-                startBeep();
-                setTimeout(stopBeep, 50); 
+                sirenBtn.innerHTML = "🔔 آژیر فعال";
             } else {
                 sirenBtn.classList.remove('active');
-                sirenBtn.innerHTML = "🔕 آژیر خاموش است";
+                sirenBtn.innerHTML = "🔕 آژیر خاموش";
                 stopBeep();
             }
         }
 
-        function processVideo() {
-            if (video.readyState === 4) {
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                diffCanvas.width = 64; 
-                diffCanvas.height = 48;
+        startCamera();
+        video.addEventListener('play', processFrame);
 
-                diffCtx.drawImage(video, 0, 0, 64, 48);
-                let currentFrameData = diffCtx.getImageData(0, 0, 64, 48);
-
-                if (lastFrameData) {
-                    let score = 0;
-                    for (let i = 0; i < currentFrameData.data.length; i += 4) {
-                        let rDiff = Math.abs(currentFrameData.data[i] - lastFrameData.data[i]);
-                        let gDiff = Math.abs(currentFrameData.data[i+1] - lastFrameData.data[i+1]);
-                        let bDiff = Math.abs(currentFrameData.data[i+2] - lastFrameData.data[i+2]);
-                        
-                        if (rDiff + gDiff + bDiff > 100) { 
-                            score++;
-                        }
-                    }
-
-                    let threshold = (105 - rangeEl.value) * 10; 
-
-                    if (score > threshold) {
-                        onMotionDetected();
-                    } else {
-                        // اگر حرکتی نیست، صدا را قطع کن
-                        if (isSirenEnabled && oscillator) {
-                            // صدا با تایمر پایین قطع می‌شود
-                        }
-                    }
-                }
-
-                lastFrameData = currentFrameData;
-            }
-            requestAnimationFrame(processVideo);
-        }
-
-        function onMotionDetected() {
-            statusEl.innerText = "⚠️ حرکت تشخیص داده شد!";
-            statusEl.style.color = "#ff4444";
-            
-            ctx.strokeStyle = "red";
-            ctx.lineWidth = 10;
-            ctx.strokeRect(0, 0, canvas.width, canvas.height);
-
-            // پخش آژیر اگر دکمه فعال باشد
-            if (isSirenEnabled) {
-                startBeep();
-            }
-
-            clearTimeout(motionTimeout);
-            motionTimeout = setTimeout(() => {
-                statusEl.innerText = "وضعیت: عادی";
-                statusEl.style.color = "#888";
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                
-                // قطع صدا وقتی حرکت تمام شد
-                stopBeep();
-            }, 300); // قطع صدا 300 میلی ثانیه بعد از آخرین فریم حرکت
-        }
-
-        video.addEventListener('play', processVideo);
     </script>
 </body>
 </html>
