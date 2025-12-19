@@ -2,160 +2,128 @@
 const video = document.getElementById('video');
 const canvas = document.getElementById('output');
 const ctx = canvas.getContext('2d');
-const statusElement = document.getElementById('status');
+const statusDiv = document.getElementById('status');
 const sensitivityInput = document.getElementById('sensitivity');
-const sensValSpan = document.getElementById('sens-val');
+const sensitivityVal = document.getElementById('sens-val');
 const motionBar = document.getElementById('motion-bar');
 const thresholdMarker = document.getElementById('threshold-marker');
-const switchBtn = document.getElementById('switch-camera');
-
-// تنظیمات
+const cameraContainer = document.getElementById('camera-container'); // کانتینر اصلی
+let stream = null;
 let facingMode = 'environment';
-let width = 640;
-let height = 480;
+let previousFrameData = null;
 
-// متغیرهای تشخیص حرکت
-let previousFrameData = null; // داده‌های پیکسل فریم قبل
-let lastMotionTime = 0;
-let motionThreshold = 50; // مقدار اولیه (برعکس اسلایدر: اسلایدر بالا = آستانه پایین)
+// تنظیمات اولیه
+let sensitivity = 50; 
+updateThresholdMarker();
 
-// ۱. مدیریت اسلایدر حساسیت
 sensitivityInput.addEventListener('input', (e) => {
-    const val = e.target.value;
-    sensValSpan.innerText = val + '%';
-    
-    // تبدیل حساسیت (0-100) به آستانه خطا (Threshold)
-    // حساسیت ۱۰۰ یعنی کوچکترین تغییر (آستانه کم)
-    // حساسیت ۰ یعنی تغییر بزرگ (آستانه زیاد)
-    
-    // فرمول معکوس:
-    // حساسیت بالا (100) -> آستانه حدود 5
-    // حساسیت پایین (0) -> آستانه حدود 1000
-    // یک فرمول ساده:
-    const maxThreshold = 200000; // عددی تجربی بر اساس تعداد پیکسل‌ها
-    const inverted = 101 - val; // 1 تا 100
-    // آستانه نهایی
-    motionThreshold = (inverted * inverted) * 20; 
-    
-    // آپدیت مکان نشانگر قرمز
-    // هرچه حساسیت بالاتر (اسلایدر راست)، نشانگر باید به چپ (راحت‌تر پر شود) برود؟
-    // بیایید ساده کنیم: نوار سبز مقدار حرکت است.
-    // نشانگر قرمز خطی است که اگر سبز از آن رد شود، حرکت ثبت می‌شود.
-    // حساسیت بالا = خط قرمز سمت چپ (زود پر شود).
-    // حساسیت پایین = خط قرمز سمت راست (دیر پر شود).
-    
-    const markerPosition = 100 - val; 
-    thresholdMarker.style.left = markerPosition + '%';
+    sensitivity = parseInt(e.target.value);
+    sensitivityVal.textContent = sensitivity + '%';
+    updateThresholdMarker();
 });
 
-// تریگر کردن رویداد اینپوت برای تنظیم اولیه
-sensitivityInput.dispatchEvent(new Event('input'));
+function updateThresholdMarker() {
+    // هرچه حساسیت بالاتر (عدد بیشتر)، آستانه پایین‌تر (حرکت کمتر لازم است)
+    // حساسیت 100 => آستانه 0 (با کوچکترین حرکت فعال شود)
+    // حساسیت 0 => آستانه 50 (نیاز به حرکت زیاد)
+    const thresholdPercent = 50 - (sensitivity / 2); 
+    thresholdMarker.style.left = thresholdPercent + '%';
+}
 
-
-// ۲. روشن کردن دوربین
 async function startCamera() {
-    statusElement.innerText = 'دسترسی به دوربین...';
-    
-    const constraints = {
-        audio: false,
-        video: {
-            facingMode: facingMode,
-            width: { ideal: width },
-            height: { ideal: height }
-        }
-    };
-
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+    }
     try {
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        statusDiv.textContent = 'در حال راه‌اندازی دوربین...';
+        stream = await navigator.mediaDevices.getUserMedia({
+            video: { 
+                facingMode: facingMode,
+                width: { ideal: 640 },
+                height: { ideal: 480 }
+            },
+            audio: false
+        });
         video.srcObject = stream;
         
         video.onloadedmetadata = () => {
-            video.play();
-            statusElement.innerText = '✅ تشخیص حرکت فعال';
-            
-            // تنظیم سایز کانواس (برای پردازش سبکتر، سایز کوچک استفاده می‌کنیم)
-            // پردازش 640x480 سنگین است. برای حرکت، 64x48 کافیست.
+            statusDiv.textContent = 'دوربین فعال شد. پردازش آغاز...';
+            // تنظیم اندازه کانواس برای پردازش سبک (64x48 پیکسل)
             canvas.width = 64; 
             canvas.height = 48;
-            
-            // شروع لوپ پردازش
-            processFrame();
+            detectMotion();
         };
-
     } catch (err) {
-        statusElement.innerText = '❌ خطا: ' + err.message;
         console.error(err);
+        statusDiv.textContent = 'خطا در دسترسی به دوربین: ' + err.message;
     }
 }
 
-// ۳. پردازش فریم به فریم (تشخیص حرکت)
-function processFrame() {
+document.getElementById('switch-camera').addEventListener('click', () => {
+    facingMode = facingMode === 'environment' ? 'user' : 'environment';
+    startCamera();
+});
+
+function detectMotion() {
     if (video.paused || video.ended) return;
 
-    // رسم ویدیو روی کانواس کوچک
+    // رسم فریم فعلی روی کانواس کوچک
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     
-    // دریافت اطلاعات پیکسل‌ها
-    const frameData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = frameData.data; // آرایه‌ای از [R, G, B, A, R, G, B, A, ...]
+    const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = frame.data;
+    const length = data.length;
     
+    let diffScore = 0;
+
     if (previousFrameData) {
-        let diffScore = 0;
-        
-        // مقایسه با فریم قبلی
-        // گام ۴تایی برمی‌داریم (فقط پیکسل‌ها را می‌خوانیم، آلفا مهم نیست)
-        for (let i = 0; i < data.length; i += 4) {
+        for (let i = 0; i < length; i += 4) {
+            // محاسبه تفاوت روشنایی (Grayscale)
             const rDiff = Math.abs(data[i] - previousFrameData[i]);
             const gDiff = Math.abs(data[i+1] - previousFrameData[i+1]);
             const bDiff = Math.abs(data[i+2] - previousFrameData[i+2]);
             
-            // اگر تغییر رنگ پیکسل زیاد بود، به امتیاز اضافه کن
-            if (rDiff + gDiff + bDiff > 50) { // حد نویز رنگ
+            // اگر تغییر پیکسل قابل توجه بود (بیش از 30 واحد)
+            if (rDiff + gDiff + bDiff > 60) {
                 diffScore++;
             }
-        }
-        
-        // آپدیت نوار وضعیت (برای نمایش بصری به کاربر)
-        // نرمال‌سازی اسکور برای نمایش در CSS (تقریبی)
-        let visualPercent = Math.min(100, (diffScore / 500) * 100); 
-        motionBar.style.width = visualPercent + '%';
-
-        // بررسی آستانه
-        if (diffScore > motionThreshold) {
-            // حرکت تشخیص داده شد!
-            motionDetected();
-        } else {
-            document.body.style.borderColor = 'black'; // حالت عادی
         }
     }
 
     // ذخیره فریم فعلی برای دور بعد
-    // باید کپی بگیریم چون data رفرنس است
+    // کپی کردن آرایه دیتا بسیار مهم است
     previousFrameData = new Uint8ClampedArray(data);
 
-    requestAnimationFrame(processFrame);
+    // محاسبه درصد حرکت نسبت به کل پیکسل‌ها
+    // تعداد کل پیکسل‌ها = width * height
+    const totalPixels = canvas.width * canvas.height;
+    const motionPercent = (diffScore / totalPixels) * 100;
+
+    // به‌روزرسانی نوار سبز
+    // برای نمایش بهتر، عدد را کمی بزرگنمایی می‌کنیم (ضربدر 5) تا حرکات کوچک هم دیده شوند
+    const displayMotion = Math.min(motionPercent * 5, 100); 
+    motionBar.style.width = displayMotion + '%';
+
+    // آستانه فعلی بر اساس اسلایدر
+    // حساسیت 100 => آستانه نزدیک 0
+    // فرمول آستانه باید با مکان مارکر قرمز هماهنگ باشد
+    const currentThreshold = parseFloat(thresholdMarker.style.left); 
+
+    // بررسی عبور از خط قرمز
+    if (displayMotion > currentThreshold) {
+        // حرکت تشخیص داده شد!
+        cameraContainer.style.border = "5px solid red";
+        statusDiv.textContent = "⚠️ حرکت تشخیص داده شد!";
+        statusDiv.style.color = "red";
+    } else {
+        // وضعیت عادی
+        cameraContainer.style.border = "none";
+        statusDiv.textContent = "در حال نظارت...";
+        statusDiv.style.color = "#888";
+    }
+
+    requestAnimationFrame(detectMotion);
 }
 
-function motionDetected() {
-    statusElement.innerText = '⚠️ حرکت تشخیص داده شد!';
-    statusElement.style.color = 'red';
-    
-    // افکت فلش زدن بردر صفحه
-    document.body.style.border = '5px solid red';
-    
-    // بازگشت متن بعد از ۱ ثانیه
-    clearTimeout(window.resetTimer);
-    window.resetTimer = setTimeout(() => {
-        statusElement.innerText = 'در حال پایش...';
-        statusElement.style.color = '#888';
-        document.body.style.border = 'none';
-    }, 200);
-}
-
-// سوییچ دوربین
-switchBtn.addEventListener('click', () => {
-    facingMode = facingMode === 'user' ? 'environment' : 'user';
-    startCamera();
-});
-
-window.addEventListener('load', startCamera);
+// شروع برنامه
+startCamera();
