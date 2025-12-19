@@ -1,6 +1,6 @@
 import os
 
-def fix_red_border_logic():
+def synchronize_visual_and_logic():
     js_path = "tools/doorbin-tashkhis-harekat/app.js"
     
     js_content = """
@@ -12,27 +12,33 @@ const sensitivityInput = document.getElementById('sensitivity');
 const sensitivityVal = document.getElementById('sens-val');
 const motionBar = document.getElementById('motion-bar');
 const thresholdMarker = document.getElementById('threshold-marker');
-const cameraContainer = document.getElementById('camera-container'); // کانتینر اصلی
+const cameraContainer = document.getElementById('camera-container');
+
 let stream = null;
 let facingMode = 'environment';
 let previousFrameData = null;
 
-// تنظیمات اولیه
-let sensitivity = 50; 
-updateThresholdMarker();
+// ضریب تقویت حرکت: تغییرات پیکسلی معمولاً کم هستند. 
+// این ضریب باعث می‌شود حرکت‌های کوچک هم روی نوار سبز دیده شوند.
+const MOTION_AMPLIFY_FACTOR = 10; 
 
+// تنظیمات اولیه
+updateThresholdSystem();
+
+// وقتی اسلایدر تغییر می‌کند
 sensitivityInput.addEventListener('input', (e) => {
-    sensitivity = parseInt(e.target.value);
-    sensitivityVal.textContent = sensitivity + '%';
-    updateThresholdMarker();
+    updateThresholdSystem();
 });
 
-function updateThresholdMarker() {
-    // هرچه حساسیت بالاتر (عدد بیشتر)، آستانه پایین‌تر (حرکت کمتر لازم است)
-    // حساسیت 100 => آستانه 0 (با کوچکترین حرکت فعال شود)
-    // حساسیت 0 => آستانه 50 (نیاز به حرکت زیاد)
-    const thresholdPercent = 50 - (sensitivity / 2); 
-    thresholdMarker.style.left = thresholdPercent + '%';
+function updateThresholdSystem() {
+    // مقدار اسلایدر مستقیماً به عنوان "حد آستانه" (Threshold) عمل می‌کند
+    const val = parseInt(sensitivityInput.value);
+    
+    // نمایش عدد به کاربر
+    sensitivityVal.textContent = val;
+    
+    // حرکت خط قرمز دقیقاً به همان درصد اسلایدر
+    thresholdMarker.style.left = val + '%';
 }
 
 async function startCamera() {
@@ -40,11 +46,11 @@ async function startCamera() {
         stream.getTracks().forEach(track => track.stop());
     }
     try {
-        statusDiv.textContent = 'در حال راه‌اندازی دوربین...';
+        statusDiv.textContent = 'در حال راه‌اندازی...';
         stream = await navigator.mediaDevices.getUserMedia({
             video: { 
                 facingMode: facingMode,
-                width: { ideal: 640 },
+                width: { ideal: 640 }, // رزولوشن مناسب برای سرعت بالا
                 height: { ideal: 480 }
             },
             audio: false
@@ -52,15 +58,15 @@ async function startCamera() {
         video.srcObject = stream;
         
         video.onloadedmetadata = () => {
-            statusDiv.textContent = 'دوربین فعال شد. پردازش آغاز...';
-            // تنظیم اندازه کانواس برای پردازش سبک (64x48 پیکسل)
+            statusDiv.textContent = 'آماده تشخیص حرکت';
+            // کانواس بسیار کوچک برای پردازش فوق‌سریع
             canvas.width = 64; 
             canvas.height = 48;
             detectMotion();
         };
     } catch (err) {
         console.error(err);
-        statusDiv.textContent = 'خطا در دسترسی به دوربین: ' + err.message;
+        statusDiv.textContent = 'خطا: ' + err.message;
     }
 }
 
@@ -72,71 +78,68 @@ document.getElementById('switch-camera').addEventListener('click', () => {
 function detectMotion() {
     if (video.paused || video.ended) return;
 
-    // رسم فریم فعلی روی کانواس کوچک
+    // 1. رسم تصویر روی کانواس کوچک
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     
+    // 2. استخراج داده‌های پیکسل
     const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const data = frame.data;
     const length = data.length;
     
-    let diffScore = 0;
+    let changedPixels = 0;
 
     if (previousFrameData) {
         for (let i = 0; i < length; i += 4) {
-            // محاسبه تفاوت روشنایی (Grayscale)
+            // محاسبه تفاوت رنگی با فریم قبلی
             const rDiff = Math.abs(data[i] - previousFrameData[i]);
             const gDiff = Math.abs(data[i+1] - previousFrameData[i+1]);
             const bDiff = Math.abs(data[i+2] - previousFrameData[i+2]);
             
-            // اگر تغییر پیکسل قابل توجه بود (بیش از 30 واحد)
+            // اگر تغییر رنگ پیکسل بیشتر از حد نویز بود (30)
             if (rDiff + gDiff + bDiff > 60) {
-                diffScore++;
+                changedPixels++;
             }
         }
     }
 
-    // ذخیره فریم فعلی برای دور بعد
-    // کپی کردن آرایه دیتا بسیار مهم است
+    // ذخیره فریم فعلی
     previousFrameData = new Uint8ClampedArray(data);
 
-    // محاسبه درصد حرکت نسبت به کل پیکسل‌ها
-    // تعداد کل پیکسل‌ها = width * height
+    // 3. محاسبه درصد واقعی تغییرات
     const totalPixels = canvas.width * canvas.height;
-    const motionPercent = (diffScore / totalPixels) * 100;
+    const rawMotionPercent = (changedPixels / totalPixels) * 100;
 
-    // به‌روزرسانی نوار سبز
-    // برای نمایش بهتر، عدد را کمی بزرگنمایی می‌کنیم (ضربدر 5) تا حرکات کوچک هم دیده شوند
-    const displayMotion = Math.min(motionPercent * 5, 100); 
-    motionBar.style.width = displayMotion + '%';
+    // 4. اعمال ضریب تقویت برای نمایش در نوار سبز (0 تا 100)
+    let displayValue = rawMotionPercent * MOTION_AMPLIFY_FACTOR;
+    if (displayValue > 100) displayValue = 100; // سقف 100
 
-    // آستانه فعلی بر اساس اسلایدر
-    // حساسیت 100 => آستانه نزدیک 0
-    // فرمول آستانه باید با مکان مارکر قرمز هماهنگ باشد
-    const currentThreshold = parseFloat(thresholdMarker.style.left); 
+    // 5. به‌روزرسانی نوار سبز
+    motionBar.style.width = displayValue + '%';
 
-    // بررسی عبور از خط قرمز
-    if (displayMotion > currentThreshold) {
-        // حرکت تشخیص داده شد!
+    // 6. مقایسه با اسلایدر (منطق اصلی)
+    // دقیقاً همان عددی که خط قرمز روی آن است را می‌خوانیم
+    const thresholdSetting = parseInt(sensitivityInput.value);
+
+    // اگر "مقدار نوار سبز" از "مکان خط قرمز" بیشتر شد -> هشدار
+    if (displayValue > thresholdSetting) {
         cameraContainer.style.border = "5px solid red";
-        statusDiv.textContent = "⚠️ حرکت تشخیص داده شد!";
         statusDiv.style.color = "red";
+        statusDiv.textContent = `حرکت: ${Math.round(displayValue)} (آستانه: ${thresholdSetting})`;
     } else {
-        // وضعیت عادی
         cameraContainer.style.border = "none";
-        statusDiv.textContent = "در حال نظارت...";
         statusDiv.style.color = "#888";
+        statusDiv.textContent = "در حال نظارت...";
     }
 
     requestAnimationFrame(detectMotion);
 }
 
-// شروع برنامه
 startCamera();
 """
     with open(js_path, "w", encoding="utf-8") as f:
         f.write(js_content)
 
-    print("✅ فایل app.js اصلاح شد: منطق قرمز شدن صفحه اکنون با نوار سبز هماهنگ است.")
+    print("✅ فایل app.js آپدیت شد: هماهنگی ۱۰۰٪ بین مکان خط قرمز و لحظه آلارم.")
 
 if __name__ == "__main__":
-    fix_red_border_logic()
+    synchronize_visual_and_logic()
