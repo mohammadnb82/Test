@@ -1,190 +1,167 @@
 import os
 
-def fix_mobile_layout():
-    html_path = "tools/doorbin-tashkhis-harekat/index.html"
+def fix_app_logic():
+    js_path = "tools/doorbin-tashkhis-harekat/app.js"
     
-    html_content = """
-<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>دوربین تشخیص حرکت دقیق</title>
-    <style>
-        * { box-sizing: border-box; }
+    js_content = """
+let videoStream = null;
+let video = document.getElementById('video');
+let canvas = document.getElementById('output');
+let ctx = canvas.getContext('2d', { willReadFrequently: true });
+let sensitivitySlider = document.getElementById('sensitivity-slider');
+let motionBar = document.getElementById('motion-bar');
+let thresholdMarker = document.getElementById('threshold-marker');
+let motionValText = document.getElementById('motion-val-text');
+let threshValText = document.getElementById('thresh-val-text');
+let switchBtn = document.getElementById('switch-camera');
 
-        body { 
-            margin: 0; 
-            padding: 0;
-            background: #000; 
-            color: white; 
-            font-family: system-ui, -apple-system, sans-serif;
-            overflow: hidden; /* جلوگیری از اسکرول صفحه */
-            display: flex;
-            flex-direction: column;
-            /* استفاده از dvh برای حل مشکل نوار آدرس سافاری در آیفون */
-            height: 100dvh; 
-        }
+// متغیرهای وضعیت
+let currentFacingMode = 'environment';
+let animationId = null;
+let lastFrameData = null;
+
+// اندازه پردازش (کم برای سرعت بالا)
+const PROCESS_WIDTH = 64;  
+const PROCESS_HEIGHT = 48; 
+
+// تنظیم اولیه اسلایدر
+sensitivitySlider.value = 50;
+updateThresholdUI(50);
+
+// راه‌اندازی دوربین
+async function setupCamera() {
+    if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+    }
+
+    try {
+        const constraints = {
+            video: {
+                facingMode: currentFacingMode,
+                width: { ideal: 640 },
+                height: { ideal: 480 }
+            },
+            audio: false
+        };
+
+        videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = videoStream;
+
+        video.onloadedmetadata = () => {
+            // تنظیم دقیق اندازه کانواس برای جلوگیری از کشیدگی
+            canvas.width = PROCESS_WIDTH;
+            canvas.height = PROCESS_HEIGHT;
+            
+            video.play();
+            startDetection();
+        };
+
+    } catch (err) {
+        console.error("خطا در دسترسی به دوربین:", err);
+        alert("لطفاً دسترسی دوربین را فعال کنید.");
+    }
+}
+
+// حلقه تشخیص حرکت
+function startDetection() {
+    if (animationId) cancelAnimationFrame(animationId);
+
+    function loop() {
+        if (video.paused || video.ended) return;
+
+        // 1. رسم فریم فعلی ویدیو روی کانواس کوچک
+        ctx.drawImage(video, 0, 0, PROCESS_WIDTH, PROCESS_HEIGHT);
         
-        /* کانتینر دوربین: مهمترین بخش */
-        #camera-container {
-            position: relative;
-            flex: 1; /* تمام فضای خالی را پر کن */
-            min-height: 0; /* حیاتی: اجازه می‌دهد ویدیو در صورت کمبود جا کوچک شود */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #111;
-            overflow: hidden;
-        }
-        
-        video {
-            width: 100%;
-            height: 100%;
-            object-fit: contain; /* حفظ نسبت تصویر بدون دفرمه شدن */
-        }
+        // 2. دریافت داده‌های پیکسل
+        const frameData = ctx.getImageData(0, 0, PROCESS_WIDTH, PROCESS_HEIGHT);
+        const currentData = frameData.data;
 
-        canvas { display: none; }
+        // 3. محاسبه تفاوت با فریم قبلی
+        let movementScore = 0;
 
-        /* بخش کنترل‌ها: فشرده و همیشه در دسترس */
-        #controls {
-            flex-shrink: 0; /* جلوگیری از جمع شدن کنترل‌ها */
-            padding: 10px 15px;
-            background: #1a1a1a;
-            border-top: 1px solid #333;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            /* اطمینان از دیده شدن در آیفون‌های بدون دکمه */
-            padding-bottom: env(safe-area-inset-bottom, 10px);
-            z-index: 10;
+        if (lastFrameData) {
+            let totalDiff = 0;
+            const length = currentData.length; // 4 * width * height
+
+            // پیمایش پیکسل‌ها (هر 4 مقدار: R, G, B, Alpha)
+            // گام 4 تایی برای سرعت بیشتر (هر پیکسل را چک نکنیم)
+            for (let i = 0; i < length; i += 16) { 
+                // تفاوت رنگ قرمز
+                const rDiff = Math.abs(currentData[i] - lastFrameData[i]);
+                // تفاوت رنگ سبز
+                const gDiff = Math.abs(currentData[i+1] - lastFrameData[i+1]);
+                // تفاوت رنگ آبی
+                const bDiff = Math.abs(currentData[i+2] - lastFrameData[i+2]);
+
+                // اگر تفاوت رنگ‌ها زیاد بود، حرکت ثبت کن
+                if (rDiff + gDiff + bDiff > 50) {
+                    totalDiff++;
+                }
+            }
+
+            // نرمال‌سازی نمره حرکت (بین 0 تا 100)
+            // عدد 300 تجربی است و بر اساس تعداد پیکسل‌ها تنظیم شده
+            movementScore = Math.min(100, Math.floor((totalDiff / (PROCESS_WIDTH * PROCESS_HEIGHT / 16)) * 300));
         }
 
-        /* استایل نوار و خط‌کش */
-        .meter-wrapper {
-            position: relative;
-            margin-bottom: 2px;
-        }
+        // ذخیره فریم فعلی برای مقایسه در دور بعد
+        // کپی کردن آرایه بسیار مهم است
+        lastFrameData = new Uint8ClampedArray(currentData);
 
-        #motion-bar-container {
-            width: 100%;
-            height: 12px;
-            background: #333;
-            position: relative;
-            direction: ltr;
-            border: 1px solid #555;
-            border-radius: 2px;
-        }
+        // 4. بروزرسانی رابط کاربری
+        updateUI(movementScore);
 
-        #motion-bar {
-            height: 100%;
-            background: #00ff00;
-            width: 0%;
-        }
+        animationId = requestAnimationFrame(loop);
+    }
 
-        #threshold-marker {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            width: 2px;
-            background: red;
-            left: 0%;
-            z-index: 5;
-            transform: translateX(-50%);
-            box-shadow: 0 0 4px red;
-        }
+    loop();
+}
 
-        #ruler {
-            display: flex;
-            justify-content: space-between;
-            direction: ltr;
-            font-size: 9px;
-            color: #777;
-            margin-top: 2px;
-        }
+// بروزرسانی نوار و اعداد
+function updateUI(score) {
+    // بروزرسانی نوار سبز
+    motionBar.style.width = score + '%';
+    
+    // بروزرسانی عدد حرکت
+    motionValText.innerText = score;
 
-        /* ردیف اطلاعات و اسلایدر کنار هم */
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 12px;
-            background: #000;
-            padding: 5px 8px;
-            border-radius: 4px;
-            border: 1px solid #333;
-        }
+    // بررسی آستانه
+    const threshold = parseInt(sensitivitySlider.value);
+    
+    // منطق هشدار
+    if (score > threshold) {
+        document.body.style.boxShadow = "inset 0 0 50px red";
+        document.body.style.border = "5px solid red";
+    } else {
+        document.body.style.boxShadow = "none";
+        document.body.style.border = "none";
+    }
+}
 
-        .slider-container {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 12px;
-        }
-        
-        input[type=range] {
-            flex-grow: 1;
-            height: 25px; /* کمی کوتاه‌تر */
-            direction: ltr;
-        }
+function updateThresholdUI(val) {
+    thresholdMarker.style.left = val + '%';
+    threshValText.innerText = val;
+}
 
-        button {
-            padding: 10px;
-            border-radius: 6px;
-            border: 1px solid #444;
-            background: #333;
-            color: white;
-            font-size: 14px;
-            width: 100%;
-            cursor: pointer;
-        }
-        button:active { background: #555; }
+// رویدادهای اسلایدر
+sensitivitySlider.addEventListener('input', (e) => {
+    updateThresholdUI(e.target.value);
+});
 
-    </style>
-</head>
-<body>
+// دکمه چرخش دوربین
+switchBtn.addEventListener('click', () => {
+    currentFacingMode = (currentFacingMode === 'environment') ? 'user' : 'environment';
+    setupCamera();
+});
 
-    <div id="camera-container">
-        <video id="video" autoplay playsinline muted></video>
-        <canvas id="output"></canvas>
-    </div>
-
-    <div id="controls">
-        <!-- نوار حرکت -->
-        <div class="meter-wrapper">
-            <div id="motion-bar-container">
-                <div id="motion-bar"></div>
-                <div id="threshold-marker"></div>
-            </div>
-            <div id="ruler">
-                <span>0</span><span>20</span><span>40</span><span>60</span><span>80</span><span>100</span>
-            </div>
-        </div>
-
-        <!-- نمایشگر اعداد -->
-        <div class="info-row">
-            <div>حرکت: <span id="motion-val-text" style="color: #0f0; font-weight:bold;">0</span></div>
-            <div>آستانه: <span id="thresh-val-text" style="color: #f55; font-weight:bold;">50</span></div>
-        </div>
-
-        <!-- اسلایدر -->
-        <div class="slider-container">
-            <span>حساسیت:</span>
-            <input type="range" id="sensitivity-slider" min="0" max="100" value="50" step="1">
-        </div>
-
-        <button id="switch-camera">🔄 چرخش دوربین</button>
-    </div>
-
-    <script src="app.js"></script>
-</body>
-</html>
+// شروع برنامه
+setupCamera();
 """
 
-    with open(html_path, "w", encoding="utf-8") as f:
-        f.write(html_content)
-
-    print("✅ فایل index.html آپدیت شد. مشکل بیرون زدن کنترل‌ها در موبایل حل شد.")
+    with open(js_path, "w", encoding="utf-8") as f:
+        f.write(js_content)
+    
+    print("✅ فایل app.js اصلاح شد.")
 
 if __name__ == "__main__":
-    fix_mobile_layout()
+    fix_app_logic()
