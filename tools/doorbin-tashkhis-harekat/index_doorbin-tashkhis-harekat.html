@@ -62,12 +62,11 @@
             border: 1px solid #333;
         }
         
-        /* Green bar fills from Left to Right (LTR standard) */
         .motion-fill {
             height: 100%;
             width: 0%;
             background: #32d74b;
-            transition: width 0.05s linear;
+            transition: width 0.1s linear; /* Slightly smoother transition */
         }
 
         .threshold-line {
@@ -78,7 +77,6 @@
             background: #ff453a;
             z-index: 10;
             box-shadow: 0 0 4px rgba(255, 69, 58, 0.8);
-            /* Logic: 'left' property will be controlled by JS */
         }
 
         .scale-numbers {
@@ -191,11 +189,9 @@
         <div class="motion-graph-wrapper">
             <div class="motion-track">
                 <div id="motionFill" class="motion-fill"></div>
-                <!-- Logic changed: Uses 'left' because we are now LTR -->
                 <div id="threshLine" class="threshold-line" style="left: 20%;"></div>
             </div>
             <div class="scale-numbers">
-                <!-- Correct LTR order: 0 on Left, 100 on Right -->
                 <span>0</span><span>20</span><span>40</span><span>60</span><span>80</span><span>100</span>
             </div>
         </div>
@@ -220,7 +216,6 @@
         </div>
     </div>
 
-    <!-- Back link is English but structure remains -->
     <a href="../index_tools.html" class="back-link">← Back to Tools</a>
 
     <script>
@@ -297,18 +292,21 @@
         function updateThreshold() {
             const val = parseInt(slider.value);
             threshText.innerText = val;
-            // Key Change for English LTR: use 'left' instead of 'right'
             threshLine.style.left = val + '%';
         }
         updateThreshold();
 
         async function startCamera() {
-            if (stream) stream.getTracks().forEach(t => t.stop());
+            if (stream) {
+                stream.getTracks().forEach(t => t.stop());
+            }
             try {
                 stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { facingMode: facingMode } 
                 });
                 video.srcObject = stream;
+                // CRITICAL FIX: Reset frame memory to prevent crash on camera switch
+                lastFrameData = null;
             } catch (err) {
                 console.log("Camera Error: " + err);
                 alert("Please enable camera access.");
@@ -316,60 +314,78 @@
         }
 
         function switchCamera() {
+            // Toggle camera mode
             facingMode = (facingMode === 'environment') ? 'user' : 'environment';
+            // Force reset memory before starting new stream
+            lastFrameData = null; 
             startCamera();
         }
 
         function processFrame() {
             if (video.readyState === 4) {
-                const w = 64; 
-                const h = 48;
-                canvas.width = w; canvas.height = h;
-                
-                ctx.drawImage(video, 0, 0, w, h);
-                const currentData = ctx.getImageData(0, 0, w, h);
-                const data = currentData.data;
-
-                if (lastFrameData) {
-                    const oldData = lastFrameData.data;
-                    let changedPixels = 0;
+                try {
+                    const w = 64; 
+                    const h = 48;
+                    // Ensure canvas is always set to correct size
+                    if (canvas.width !== w) canvas.width = w;
+                    if (canvas.height !== h) canvas.height = h;
                     
-                    for (let i = 0; i < data.length; i += 4) {
-                        const rDiff = Math.abs(data[i] - oldData[i]);
-                        const gDiff = Math.abs(data[i+1] - oldData[i+1]);
-                        const bDiff = Math.abs(data[i+2] - oldData[i+2]);
+                    ctx.drawImage(video, 0, 0, w, h);
+                    const currentData = ctx.getImageData(0, 0, w, h);
+                    const data = currentData.data;
+
+                    if (lastFrameData && lastFrameData.data.length === data.length) {
+                        const oldData = lastFrameData.data;
+                        let changedPixels = 0;
                         
-                        // Night Vision Sensitivity
-                        if ((rDiff + gDiff + bDiff) > 15) {
-                            changedPixels++;
+                        for (let i = 0; i < data.length; i += 4) {
+                            const rDiff = Math.abs(data[i] - oldData[i]);
+                            const gDiff = Math.abs(data[i+1] - oldData[i+1]);
+                            const bDiff = Math.abs(data[i+2] - oldData[i+2]);
+                            
+                            // Night Vision Threshold
+                            if ((rDiff + gDiff + bDiff) > 20) {
+                                changedPixels++;
+                            }
+                        }
+
+                        const totalPixels = w * h;
+                        // Calculate raw percentage
+                        let rawPercent = (changedPixels / totalPixels) * 100;
+                        
+                        // Apply Sensitivity Multiplier (Boost)
+                        // This allows small movements to register as high values
+                        let finalScore = rawPercent * 6; 
+                        
+                        // Clamp to 0-100
+                        if (finalScore > 100) finalScore = 100;
+                        if (finalScore < 0) finalScore = 0;
+                        
+                        // Round for display
+                        let displayVal = Math.floor(finalScore);
+
+                        // SYNC FIX: Ensure Text and Graph are identical
+                        motionText.innerText = displayVal;
+                        motionFill.style.width = displayVal + '%';
+
+                        const thresholdVal = parseInt(slider.value);
+                        
+                        if (displayVal > thresholdVal) {
+                            alarmLayer.style.display = "block";
+                            motionFill.style.background = "#ff453a"; 
+                            if (isSirenActive) startBeep();
+                        } else {
+                            alarmLayer.style.display = "none";
+                            motionFill.style.background = "#32d74b";
+                            stopBeep();
                         }
                     }
-
-                    const totalPixels = w * h;
-                    let motionPercent = (changedPixels / totalPixels) * 100;
-                    
-                    // High Sensitivity Multiplier
-                    let motionVal = Math.floor(motionPercent * 8); 
-                    
-                    if (motionVal > 100) motionVal = 100;
-                    if (motionVal < 0) motionVal = 0;
-
-                    motionText.innerText = motionVal;
-                    motionFill.style.width = motionVal + '%';
-
-                    const thresholdVal = parseInt(slider.value);
-                    
-                    if (motionVal > thresholdVal) {
-                        alarmLayer.style.display = "block";
-                        motionFill.style.background = "#ff453a"; 
-                        if (isSirenActive) startBeep();
-                    } else {
-                        alarmLayer.style.display = "none";
-                        motionFill.style.background = "#32d74b";
-                        stopBeep();
-                    }
+                    lastFrameData = currentData;
+                } catch(e) {
+                    // Prevent loop crash
+                    console.error("Frame skip:", e);
+                    lastFrameData = null; 
                 }
-                lastFrameData = currentData;
             }
             requestAnimationFrame(processFrame);
         }
