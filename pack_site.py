@@ -1,87 +1,87 @@
-import  os
+import os
 import base64
 
-# نام فایلی که در نهایت ساخته می‌شود
+# نام فایلی که خروجی می‌دهد
 OUTPUT_FILENAME = "installer.py"
 
-# پوشه‌ها و فایل‌هایی که نباید کپی شوند (برای جلوگیری از حجم زیاد یا کپی شدن خود اسکریپت)
-IGNORE_DIRS = {'.git', '__pycache__', '.replit', '.upm', 'venv', 'node_modules'}
-IGNORE_FILES = {OUTPUT_FILENAME, os.path.basename(__file__), '.DS_Store'}
+# لیست پوشه‌ها و فایل‌هایی که نباید کپی شوند (مثل فایل‌های سیستمی گیت)
+IGNORE_DIRS = {'.git', '.github', '__pycache__', 'venv', 'node_modules', '.upm'}
+IGNORE_FILES = {OUTPUT_FILENAME, os.path.basename(__file__), '.DS_Store', 'replit.nix', '.replit'}
 
 def create_installer():
-    # شروع نوشتن محتوای فایل نصبی
-    # این متغیر حاوی کدی است که قرار است در سایت مقصد اجرا شود
+    print("--- STARTING PACKING PROCESS ---")
+    
+    # شروع ساخت محتوای فایل اینستالر
     installer_content = [
+        "# --- AUTO GENERATED INSTALLER ---",
         "import os",
         "import base64",
+        "import sys",
         "",
         "print('--- STARTING INSTALLATION ---')",
         "",
-        "# This dictionary holds all file paths and their base64 encoded content",
         "files_data = {"
     ]
 
-    print("Reading files and packing them...")
+    file_count = 0
     
-    # پیمایش تمام فایل‌های پوشه فعلی
+    # پیمایش تمام پوشه‌ها و زیرپوشه‌ها (Recursive)
     for root, dirs, files in os.walk("."):
-        # حذف پوشه‌های ممنوعه از لیست پیمایش
+        # حذف پوشه‌های ممنوعه تا وارد آنها نشود
         dirs[:] = [d for d in dirs if d not in IGNORE_DIRS]
         
         for file in files:
             if file in IGNORE_FILES:
                 continue
-                
-            file_path = os.path.join(root, file)
-            # مسیر نسبی فایل (بدون ./)
-            rel_path = os.path.relpath(file_path, ".")
+            
+            # مسیر کامل فایل در سیستم
+            full_path = os.path.join(root, file)
+            # مسیر نسبی برای ساختار سایت (بدون ./)
+            rel_path = os.path.relpath(full_path, ".")
+            
+            # تبدیل اسلش‌های ویندوز به لینوکس (برای سازگاری)
+            rel_path = rel_path.replace("\\", "/")
             
             try:
-                # خواندن فایل به صورت باینری (برای پشتیبانی از عکس و متن)
-                with open(file_path, "rb") as f:
-                    file_content = f.read()
-                    # تبدیل به base64 برای قرار گرفتن در کد متنی
-                    encoded_content = base64.b64encode(file_content).decode('utf-8')
+                with open(full_path, "rb") as f:
+                    raw_data = f.read()
+                    b64_data = base64.b64encode(raw_data).decode('utf-8')
                     
-                # اضافه کردن به دیکشنری فایل نصبی
-                installer_content.append(f'    "{rel_path}": "{encoded_content}",')
-                print(f"Packed: {rel_path}")
-                
+                # اضافه کردن به لیست داده‌ها
+                installer_content.append(f'    "{rel_path}": "{b64_data}",')
+                print(f"[PACKED] {rel_path}")
+                file_count += 1
             except Exception as e:
-                print(f"Skipped {rel_path} due to error: {e}")
+                print(f"[ERROR] Could not pack {rel_path}: {e}")
 
-    # بستن دیکشنری و اضافه کردن کدهای استخراج (Extract)
+    # بستن دیکشنری و اضافه کردن کد بازسازی
     installer_content.append("}")
     installer_content.append("")
     installer_content.append("def install():")
-    installer_content.append("    count = 0")
+    installer_content.append("    print(f'Extracting {len(files_data)} files...')")
     installer_content.append("    for file_path, encoded_data in files_data.items():")
     installer_content.append("        try:")
-    installer_content.append("            # Create directories if needed")
+    installer_content.append("            # Create directory structure")
     installer_content.append("            dir_name = os.path.dirname(file_path)")
     installer_content.append("            if dir_name:")
     installer_content.append("                os.makedirs(dir_name, exist_ok=True)")
     installer_content.append("")
-    installer_content.append("            # Write file content")
+    installer_content.append("            # Write binary data")
     installer_content.append("            with open(file_path, 'wb') as f:")
     installer_content.append("                f.write(base64.b64decode(encoded_data))")
-    installer_content.append("            ")
-    installer_content.append("            print(f'Created: {file_path}')")
-    installer_content.append("            count += 1")
+    installer_content.append("            print(f'[OK] Created: {file_path}')")
     installer_content.append("        except Exception as e:")
-    installer_content.append("            print(f'Error creating {file_path}: {e}')")
-    installer_content.append("")
-    installer_content.append("    print(f'\\nSuccessfully installed {count} files.')")
+    installer_content.append("            print(f'[FAIL] Error creating {file_path}: {e}')")
+    installer_content.append("    print('\\n--- INSTALLATION COMPLETE ---')")
     installer_content.append("")
     installer_content.append("if __name__ == '__main__':")
     installer_content.append("    install()")
 
-    # نوشتن فایل نهایی installer.py
+    # ذخیره فایل نهایی
     with open(OUTPUT_FILENAME, "w", encoding="utf-8") as f:
         f.write("\n".join(installer_content))
     
-    print(f"\nDone! The file '{OUTPUT_FILENAME}' has been created.")
-    print("Copy the content of 'installer.py' and run it on the destination site.")
+    print(f"\nSUCCESS! Packed {file_count} files into '{OUTPUT_FILENAME}'.")
 
 if __name__ == "__main__":
     create_installer()
