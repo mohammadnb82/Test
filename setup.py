@@ -10,7 +10,7 @@ html_content = r"""<!DOCTYPE html>
     <title>Smart Motion Camera</title>
     <style>
         body { 
-            background-color: #121212; 
+            background-color: #000; 
             color: white; 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
             display: flex; 
@@ -22,380 +22,424 @@ html_content = r"""<!DOCTYPE html>
             overflow: hidden;
         }
 
-        .video-container {
+        /* Video Area */
+        .video-wrapper {
             width: 100%;
             max-width: 600px;
-            aspect-ratio: 4/3;
-            background: #000;
-            border-radius: 10px;
-            overflow: hidden;
             position: relative;
-            margin-bottom: 10px;
-            border: 1px solid #333;
-        }
-        video { width: 100%; height: 100%; object-fit: cover; }
-        canvas { display: none; }
-        
-        #alarmLayer {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255, 0, 0, 0.3);
-            display: none; pointer-events: none; z-index: 5;
-            box-shadow: inset 0 0 50px red;
-        }
-
-        .control-panel {
-            width: 100%;
-            max-width: 600px;
-            background: #1e1e1e;
-            padding: 15px;
+            background: #111;
             border-radius: 12px;
-            box-sizing: border-box;
-        }
-
-        .motion-graph-wrapper {
-            position: relative;
-            margin-bottom: 5px;
-        }
-        
-        .motion-track {
-            height: 24px;
-            background: #2c2c2e;
-            position: relative;
-            border-radius: 4px;
             overflow: hidden;
             border: 1px solid #333;
+            margin-bottom: 10px;
+            /* Force Aspect Ratio */
+            aspect-ratio: 4/3; 
         }
-        
-        .motion-fill {
+
+        video { 
+            width: 100%; 
+            height: 100%; 
+            object-fit: cover; 
+            display: block;
+        }
+
+        /* Red overlay when alarm triggers */
+        #alarmOverlay {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255, 0, 0, 0.3);
+            display: none; 
+            z-index: 10;
+            box-shadow: inset 0 0 60px red;
+            pointer-events: none;
+        }
+
+        /* Controls Area */
+        .controls {
+            width: 100%;
+            max-width: 600px;
+            background: #1c1c1e;
+            padding: 15px;
+            border-radius: 14px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* 1. Motion Bar Graph */
+        .graph-container {
+            position: relative;
+            width: 100%;
+            height: 30px;
+            background: #2c2c2e;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid #3a3a3c;
+        }
+
+        .motion-bar {
             height: 100%;
             width: 0%;
-            background: #32d74b;
-            transition: width 0.1s linear; /* Slightly smoother transition */
+            background: #32d74b; /* Green */
+            transition: width 0.05s linear, background 0.2s;
         }
 
-        .threshold-line {
+        /* The Red Threshold Line */
+        .limit-line {
             position: absolute;
-            top: 0;
-            bottom: 0;
-            width: 3px;
+            top: 0; bottom: 0;
+            width: 2px;
             background: #ff453a;
-            z-index: 10;
-            box-shadow: 0 0 4px rgba(255, 69, 58, 0.8);
+            z-index: 5;
+            box-shadow: 0 0 5px rgba(255, 69, 58, 0.8);
+            transform: translateX(-50%); /* Center the line on the value */
         }
 
-        .scale-numbers {
+        /* Scale Numbers under graph */
+        .scale {
             display: flex;
             justify-content: space-between;
+            font-size: 10px;
             color: #8e8e93;
-            font-size: 11px;
-            margin-top: 4px;
-            padding: 0 2px;
+            padding: 0 5px;
+            margin-top: -10px; /* pull closer to graph */
         }
 
-        .stats-row {
+        /* 2. Stats Display */
+        .stats {
             display: flex;
             justify-content: space-between;
-            margin: 12px 0;
-            font-size: 15px;
-            font-weight: bold;
+            font-size: 16px;
+            font-weight: 700;
         }
-        .stat-item { display: flex; align-items: center; gap: 6px; }
-        .text-red { color: #ff453a; }
-        .text-green { color: #32d74b; }
+        .stat-val { font-family: monospace; font-size: 18px; }
+        .col-red { color: #ff453a; }
+        .col-green { color: #32d74b; }
 
-        .slider-container {
+        /* 3. Slider */
+        .slider-row {
             display: flex;
             align-items: center;
-            gap: 12px;
-            margin-bottom: 20px;
+            gap: 10px;
         }
-        .slider-label { font-size: 14px; color: #aeaeb2; min-width: 80px; }
+        .slider-label { font-size: 13px; color: #aeaeb2; white-space: nowrap; }
         
         input[type=range] {
-            flex-grow: 1;
-            height: 6px;
-            border-radius: 3px;
-            background: #3a3a3c;
-            outline: none;
+            flex: 1;
+            height: 20px;
             -webkit-appearance: none;
-        }
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 24px;
-            height: 24px;
-            background: white;
-            border-radius: 50%;
-            cursor: pointer;
-            margin-top: -9px; 
-            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            background: transparent;
         }
         input[type=range]::-webkit-slider-runnable-track {
             width: 100%;
             height: 6px;
-            background: #0a84ff;
+            background: #48484a;
             border-radius: 3px;
         }
-
-        .buttons-row {
-            display: flex;
-            gap: 12px;
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 22px;
+            width: 22px;
+            border-radius: 50%;
+            background: #fff;
+            margin-top: -8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
         }
 
-        .btn {
+        /* 4. Buttons */
+        .btn-row {
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            flex: 1;
             padding: 14px;
             border: none;
             border-radius: 10px;
             font-size: 15px;
             font-weight: 600;
-            cursor: pointer;
             color: white;
+            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-            flex: 1;
+            gap: 6px;
         }
-
-        .btn-cam { background: #3a3a3c; } 
+        .btn-rotate { background: #3a3a3c; }
+        .btn-siren { background: #3a3a3c; color: #bbb; border: 1px solid #444; }
         
-        .btn-siren { background: #3a3a3c; color: #aaa; border: 1px solid #444; }
-        .btn-siren.active { 
-            background: #ff453a; 
-            color: white; 
+        /* Active Siren State */
+        .btn-siren.on {
+            background: #ff453a;
+            color: white;
             border: none;
-            animation: pulse-red 1.5s infinite;
+            animation: pulse 1s infinite;
         }
-
-        @keyframes pulse-red {
-            0% { box-shadow: 0 0 0 0 rgba(255, 69, 58, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(255, 69, 58, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(255, 69, 58, 0); }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.8; }
+            100% { opacity: 1; }
         }
 
         .back-link {
-            margin-top: 25px;
+            margin-top: auto;
+            margin-bottom: 20px;
             color: #636366;
             text-decoration: none;
-            font-size: 13px;
+            font-size: 14px;
         }
+
+        /* Hidden Canvas for processing */
+        canvas { display: none; }
     </style>
 </head>
 <body>
 
-    <div class="video-container">
+    <div class="video-wrapper">
         <video id="video" autoplay playsinline muted></video>
-        <div id="alarmLayer"></div>
+        <div id="alarmOverlay"></div>
     </div>
     <canvas id="canvas"></canvas>
 
-    <div class="control-panel">
+    <div class="controls">
         
-        <div class="motion-graph-wrapper">
-            <div class="motion-track">
-                <div id="motionFill" class="motion-fill"></div>
-                <div id="threshLine" class="threshold-line" style="left: 20%;"></div>
+        <!-- Motion Visualizer -->
+        <div>
+            <div class="graph-container">
+                <div id="motionBar" class="motion-bar"></div>
+                <div id="limitLine" class="limit-line" style="left: 20%;"></div>
             </div>
-            <div class="scale-numbers">
-                <span>0</span><span>20</span><span>40</span><span>60</span><span>80</span><span>100</span>
+            <div class="scale">
+                <span>0</span><span>25</span><span>50</span><span>75</span><span>100</span>
             </div>
         </div>
 
-        <div class="stats-row">
-            <span class="stat-item text-red">Threshold: <span id="threshText">20</span></span>
-            <span class="stat-item text-green">Motion: <span id="motionText">0</span></span>
+        <!-- Numbers -->
+        <div class="stats">
+            <div class="col-red">Trigger: <span id="threshVal" class="stat-val">20</span>%</div>
+            <div class="col-green">Motion: <span id="motionVal" class="stat-val">0</span>%</div>
         </div>
 
-        <div class="slider-container">
-            <span class="slider-label">Sensitivity:</span>
-            <input type="range" id="sensitivitySlider" min="1" max="100" value="20">
+        <!-- Slider -->
+        <div class="slider-row">
+            <span class="slider-label">Alarm Threshold</span>
+            <input type="range" id="slider" min="5" max="95" value="20">
         </div>
 
-        <div class="buttons-row">
-            <button class="btn btn-cam" onclick="switchCamera()">
-                🔄 Rotate Cam
+        <!-- Actions -->
+        <div class="btn-row">
+            <button class="btn-rotate" onclick="flipCamera()">
+                🔄 Flip Cam
             </button>
-            <button id="sirenBtn" class="btn btn-siren" onclick="toggleSiren()">
+            <button id="sirenBtn" class="btn-siren" onclick="toggleSiren()">
                 🔕 Siren OFF
             </button>
         </div>
+
     </div>
 
     <a href="../index_tools.html" class="back-link">← Back to Tools</a>
 
     <script>
+        // --- Elements ---
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        const alarmLayer = document.getElementById('alarmLayer');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
         
-        const motionFill = document.getElementById('motionFill');
-        const threshLine = document.getElementById('threshLine');
-        const threshText = document.getElementById('threshText');
-        const motionText = document.getElementById('motionText');
-        const slider = document.getElementById('sensitivitySlider');
+        const motionBar = document.getElementById('motionBar');
+        const limitLine = document.getElementById('limitLine');
+        const motionValDisplay = document.getElementById('motionVal');
+        const threshValDisplay = document.getElementById('threshVal');
+        const slider = document.getElementById('slider');
+        const alarmOverlay = document.getElementById('alarmOverlay');
         const sirenBtn = document.getElementById('sirenBtn');
 
+        // --- State ---
         let stream = null;
         let facingMode = 'environment';
-        let lastFrameData = null;
-        let isSirenActive = false;
-        
-        // Audio System
-        let audioCtx = null;
-        let oscillator = null;
-        let gainNode = null;
-        let isBeeping = false;
+        let lastFrame = null;
+        let isSirenOn = false;
+        let alarmTriggered = false;
 
+        // --- Audio Context (Siren) ---
+        let audioCtx, osc, gain;
+        
         function initAudio() {
             if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                oscillator = audioCtx.createOscillator();
-                gainNode = audioCtx.createGain();
-                oscillator.type = 'square';
-                oscillator.frequency.value = 800; 
-                gainNode.gain.value = 0;
-                oscillator.connect(gainNode);
-                gainNode.connect(audioCtx.destination);
-                oscillator.start();
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
             }
             if (audioCtx.state === 'suspended') audioCtx.resume();
         }
 
-        function startBeep() {
-            if (gainNode && !isBeeping) {
-                gainNode.gain.setTargetAtTime(0.3, audioCtx.currentTime, 0.05);
-                oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
-                oscillator.frequency.linearRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
-                isBeeping = true;
-            }
-        }
+        function playBeep() {
+            if (!audioCtx) initAudio();
+            // Create oscillator for each beep to ensure clean sound
+            const o = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            o.type = 'square';
+            o.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+            o.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
+            
+            g.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
 
-        function stopBeep() {
-            if (gainNode && isBeeping) {
-                gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
-                isBeeping = false;
-            }
+            o.connect(g);
+            g.connect(audioCtx.destination);
+            o.start();
+            o.stop(audioCtx.currentTime + 0.15);
         }
 
         function toggleSiren() {
-            isSirenActive = !isSirenActive;
             initAudio();
-            if (isSirenActive) {
-                sirenBtn.classList.add('active');
-                sirenBtn.innerHTML = "🔔 Siren ON";
-                startBeep(); setTimeout(stopBeep, 150);
+            isSirenOn = !isSirenOn;
+            if (isSirenOn) {
+                sirenBtn.classList.add('on');
+                sirenBtn.innerText = "🔔 Siren ON";
+                // Test beep
+                playBeep();
             } else {
-                sirenBtn.classList.remove('active');
-                sirenBtn.innerHTML = "🔕 Siren OFF";
-                stopBeep();
+                sirenBtn.classList.remove('on');
+                sirenBtn.innerText = "🔕 Siren OFF";
+                alarmOverlay.style.display = 'none';
             }
         }
 
-        slider.addEventListener('input', updateThreshold);
+        // --- Slider Logic ---
+        slider.addEventListener('input', () => {
+            const val = slider.value;
+            limitLine.style.left = val + '%';
+            threshValDisplay.innerText = val;
+        });
+        // Init visual
+        limitLine.style.left = slider.value + '%';
 
-        function updateThreshold() {
-            const val = parseInt(slider.value);
-            threshText.innerText = val;
-            threshLine.style.left = val + '%';
-        }
-        updateThreshold();
 
-        async function startCamera() {
+        // --- Camera Logic ---
+        async function startCam() {
             if (stream) {
                 stream.getTracks().forEach(t => t.stop());
             }
             try {
-                stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: facingMode } 
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        facingMode: facingMode,
+                        width: { ideal: 640 }, // request lower res for performance
+                        height: { ideal: 480 }
+                    },
+                    audio: false
                 });
                 video.srcObject = stream;
-                // CRITICAL FIX: Reset frame memory to prevent crash on camera switch
-                lastFrameData = null;
+                // Important: clear memory when cam starts
+                lastFrame = null;
             } catch (err) {
-                console.log("Camera Error: " + err);
-                alert("Please enable camera access.");
+                alert("Camera Access Denied or Error: " + err);
             }
         }
 
-        function switchCamera() {
-            // Toggle camera mode
+        function flipCamera() {
             facingMode = (facingMode === 'environment') ? 'user' : 'environment';
-            // Force reset memory before starting new stream
-            lastFrameData = null; 
-            startCamera();
+            lastFrame = null; // Prevent crash
+            startCam();
         }
 
-        function processFrame() {
+        // --- Processing Loop ---
+        // We use a small canvas for processing (64x48) to be fast
+        const PROC_W = 64;
+        const PROC_H = 48;
+        canvas.width = PROC_W;
+        canvas.height = PROC_H;
+
+        function loop() {
             if (video.readyState === 4) {
                 try {
-                    const w = 64; 
-                    const h = 48;
-                    // Ensure canvas is always set to correct size
-                    if (canvas.width !== w) canvas.width = w;
-                    if (canvas.height !== h) canvas.height = h;
-                    
-                    ctx.drawImage(video, 0, 0, w, h);
-                    const currentData = ctx.getImageData(0, 0, w, h);
-                    const data = currentData.data;
+                    ctx.drawImage(video, 0, 0, PROC_W, PROC_H);
+                    const frame = ctx.getImageData(0, 0, PROC_W, PROC_H);
+                    const data = frame.data;
+                    const len = data.length;
 
-                    if (lastFrameData && lastFrameData.data.length === data.length) {
-                        const oldData = lastFrameData.data;
+                    if (lastFrame) {
+                        const prev = lastFrame.data;
                         let changedPixels = 0;
-                        
-                        for (let i = 0; i < data.length; i += 4) {
-                            const rDiff = Math.abs(data[i] - oldData[i]);
-                            const gDiff = Math.abs(data[i+1] - oldData[i+1]);
-                            const bDiff = Math.abs(data[i+2] - oldData[i+2]);
-                            
-                            // Night Vision Threshold
-                            if ((rDiff + gDiff + bDiff) > 20) {
+                        let totalBrightness = 0;
+
+                        // 1. Calculate Pixels
+                        for (let i = 0; i < len; i += 4) {
+                            const r = data[i];
+                            const g = data[i+1];
+                            const b = data[i+2];
+
+                            // Track brightness for night mode check
+                            totalBrightness += (r + g + b);
+
+                            const pr = prev[i];
+                            const pg = prev[i+1];
+                            const pb = prev[i+2];
+
+                            // Absolute difference
+                            const diff = Math.abs(r - pr) + Math.abs(g - pg) + Math.abs(b - pb);
+
+                            // LOWER THRESHOLD: was 20, now 10 to see in dark
+                            if (diff > 10) { 
                                 changedPixels++;
                             }
                         }
 
-                        const totalPixels = w * h;
-                        // Calculate raw percentage
-                        let rawPercent = (changedPixels / totalPixels) * 100;
-                        
-                        // Apply Sensitivity Multiplier (Boost)
-                        // This allows small movements to register as high values
-                        let finalScore = rawPercent * 6; 
-                        
-                        // Clamp to 0-100
-                        if (finalScore > 100) finalScore = 100;
-                        if (finalScore < 0) finalScore = 0;
-                        
-                        // Round for display
-                        let displayVal = Math.floor(finalScore);
+                        // 2. Night Mode Booster
+                        // Average brightness per pixel (0-765 max sum)
+                        const avgBrightness = totalBrightness / (PROC_W * PROC_H);
+                        // If very dark (avg < 100), boost the multiplier
+                        let multiplier = 5; // Base sensitivity
+                        if (avgBrightness < 150) {
+                             multiplier = 10; // Double sensitivity in low light
+                        }
 
-                        // SYNC FIX: Ensure Text and Graph are identical
-                        motionText.innerText = displayVal;
-                        motionFill.style.width = displayVal + '%';
-
-                        const thresholdVal = parseInt(slider.value);
+                        // 3. Calculate Score (0-100)
+                        const totalPix = PROC_W * PROC_H;
+                        let percent = (changedPixels / totalPix) * 100;
                         
-                        if (displayVal > thresholdVal) {
-                            alarmLayer.style.display = "block";
-                            motionFill.style.background = "#ff453a"; 
-                            if (isSirenActive) startBeep();
+                        // Apply multiplier
+                        let finalVal = Math.floor(percent * multiplier);
+                        
+                        // Clamp
+                        if (finalVal > 100) finalVal = 100;
+                        if (finalVal < 0) finalVal = 0;
+
+                        // 4. Update UI
+                        motionBar.style.width = finalVal + '%';
+                        motionValDisplay.innerText = finalVal;
+
+                        // 5. Check Alarm
+                        const threshold = parseInt(slider.value);
+                        
+                        // Strict check: Is Motion > Threshold?
+                        if (finalVal > threshold) {
+                            motionBar.style.background = '#ff453a'; // Red bar
+                            if (isSirenOn) {
+                                alarmOverlay.style.display = 'block';
+                                playBeep(); 
+                            }
                         } else {
-                            alarmLayer.style.display = "none";
-                            motionFill.style.background = "#32d74b";
-                            stopBeep();
+                            motionBar.style.background = '#32d74b'; // Green bar
+                            alarmOverlay.style.display = 'none';
                         }
                     }
-                    lastFrameData = currentData;
-                } catch(e) {
-                    // Prevent loop crash
-                    console.error("Frame skip:", e);
-                    lastFrameData = null; 
+
+                    // Save frame
+                    lastFrame = frame;
+
+                } catch (e) {
+                    console.error(e);
+                    lastFrame = null;
                 }
             }
-            requestAnimationFrame(processFrame);
+            requestAnimationFrame(loop);
         }
 
-        startCamera();
-        video.addEventListener('play', processFrame);
+        // Start
+        startCam();
+        // Start loop when video plays
+        video.addEventListener('play', loop);
 
     </script>
 </body>
@@ -404,6 +448,6 @@ html_content = r"""<!DOCTYPE html>
 try:
     with open(target_file_path, "w", encoding="utf-8") as f:
         f.write(html_content)
-    print("Success: Fixed sync mismatch and camera switch crash.")
+    print("Code updated successfully with Night Mode fix and Visual Sync.")
 except Exception as e:
-    print("Error updating file: " + str(e))
+    print(f"Error: {e}")
