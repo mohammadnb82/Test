@@ -1,7 +1,7 @@
 import os
 from textwrap import dedent
 
-BASE = "guard_camera"
+BASE = "guard_cameraa"
 
 files = {
     "index.html": dedent("""
