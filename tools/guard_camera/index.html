@@ -1,0 +1,81 @@
+
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>دوربین نگهبان (پایه)</title>
+    <style>
+        body { font-family: Tahoma; text-align: center; padding-top: 50px; }
+        #videoFeed { border: 1px solid black; width: 640px; height: 480px; margin: 20px auto; display: block; }
+        .controls button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        #alarmStatus { font-weight: bold; color: green; }
+    </style>
+</head>
+<body>
+    <h1>دوربین نگهبان (فریم اولیه)</h1>
+    <video id="videoFeed" autoplay muted></video>
+    
+    <div class="controls">
+        <button onclick="switchCamera()">تغییر دوربین</button>
+        <button onclick="toggleAlarm()">کنترل آژیر</button>
+        <span id="alarmStatus">آژیر: خاموش</span>
+    </div>
+
+    <script>
+        let stream;
+        let currentDeviceId = null;
+
+        async function startStream(deviceId = null) {
+            try {
+                const constraints = { video: { deviceId: deviceId ? { exact: deviceId } : true } };
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                const video = document.getElementById('videoFeed');
+                video.srcObject = stream;
+                
+                // دریافت لیست دستگاه‌ها برای سوییچینگ
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                
+                if (videoDevices.length > 0 && !currentDeviceId) {
+                    // تنظیم دوربین پیش‌فرض برای اولین بار
+                    currentDeviceId = videoDevices[0].deviceId;
+                }
+
+            } catch (err) {
+                console.error("خطا در دسترسی به دوربین:", err);
+                alert("اجازه دسترسی به دوربین داده نشده است یا دوربینی یافت نشد.");
+            }
+        }
+
+        async function switchCamera() {
+            if (!stream) return;
+            stream.getTracks().forEach(track => track.stop());
+            
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices.filter(device => device.kind === 'videoinput');
+            
+            if (videoDevices.length > 1) {
+                const currentIndex = videoDevices.findIndex(d => d.deviceId === currentDeviceId);
+                const nextIndex = (currentIndex + 1) % videoDevices.length;
+                currentDeviceId = videoDevices[nextIndex].deviceId;
+                startStream(currentDeviceId);
+            } else {
+                alert("فقط یک دوربین در دسترس است.");
+            }
+        }
+
+        let isAlarmOn = false;
+        function toggleAlarm() {
+            isAlarmOn = !isAlarmOn;
+            const statusSpan = document.getElementById('alarmStatus');
+            statusSpan.innerText = isAlarmOn ? "آژیر: فعال" : "آژیر: خاموش";
+            statusSpan.style.color = isAlarmOn ? 'red' : 'green';
+            // در نسخه نهایی، این بخش منطق تشخیص چهره را فعال/غیرفعال می‌کرد.
+        }
+
+        window.onload = () => {
+            startStream();
+        };
+    </script>
+</body>
+</html>
