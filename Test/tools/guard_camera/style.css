@@ -1,0 +1,22 @@
+body {
+  margin:0;
+  padding:10px;
+  font-family:sans-serif;
+  background:#0b0b0b;
+  color:#fff;
+  text-align:center;
+}
+video, canvas {
+  width:100%;
+  max-height:60vh;
+  background:#000;
+}
+.controls button {
+  margin:5px;
+  padding:10px;
+  font-size:16px;
+}
+#status {
+  margin:8px;
+  color:#0f0;
+}
