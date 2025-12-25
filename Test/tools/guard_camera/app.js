@@ -2,15 +2,11 @@ const video=document.getElementById("video");
 const canvas=document.getElementById("canvas");
 const ctx=canvas.getContext("2d");
 const statusEl=document.getElementById("status");
-const btn=document.getElementById("startBtn");
 
-let stream,lastFrame=null,audioCtx,model=null,aiReady=false;
+let stream,audioCtx,model,lastFrame=null;
+let facing="environment";
 
-/* ---- storage ---- */
-const armed=()=>localStorage.getItem("armed")==="1";
-const setArmed=v=>localStorage.setItem("armed",v?"1":"0");
-
-/* ---- audio ---- */
+/* ---------- audio ---------- */
 function unlockAudio(){
  audioCtx=new(window.AudioContext||window.webkitAudioContext)();
  audioCtx.resume();
@@ -18,78 +14,85 @@ function unlockAudio(){
 function siren(){
  if(!audioCtx)return;
  const o=audioCtx.createOscillator();
- o.frequency.value=900;
+ o.type="sawtooth";
+ o.frequency.value=800;
  o.connect(audioCtx.destination);
  o.start();
- setTimeout(()=>o.stop(),600);
+ setTimeout(()=>o.stop(),800);
 }
 
-/* ---- camera ---- */
+/* ---------- camera ---------- */
 async function startCamera(){
- stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
+ if(stream)stream.getTracks().forEach(t=>t.stop());
+ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:facing}});
  video.srcObject=stream;
  return new Promise(r=>video.onloadedmetadata=()=>{video.play();r();});
 }
 
-/* ---- motion ---- */
+/* ---------- motion ---------- */
 function detectMotion(){
  if(video.videoWidth===0)return;
  canvas.width=video.videoWidth;
  canvas.height=video.videoHeight;
  ctx.drawImage(video,0,0);
- const f=ctx.getImageData(0,0,canvas.width,canvas.height);
+ const frame=ctx.getImageData(0,0,canvas.width,canvas.height);
  if(lastFrame){
-  let d=0;
-  for(let i=0;i<f.data.length;i+=50)
-   d+=Math.abs(f.data[i]-lastFrame.data[i]);
-  if(d>3000){
+  let diff=0;
+  for(let i=0;i<frame.data.length;i+=80){
+   diff+=Math.abs(frame.data[i]-lastFrame.data[i]);
+  }
+  if(diff>2500){
    statusEl.textContent="🚨 حرکت";
    siren();
-   if(aiReady)detectHuman();
+   detectHuman();
   }
  }
- lastFrame=f;
+ lastFrame=frame;
 }
 
-/* ---- AI ---- */
-async function startAI(){
+/* ---------- AI ---------- */
+async function loadAI(){
  model=await cocoSsd.load();
- aiReady=true;
- statusEl.textContent="✅ AI فعال";
+ statusEl.textContent="✅ AI آماده";
 }
 async function detectHuman(){
- const p=await model.detect(video);
- p.forEach(x=>{
-  if(x.class==="person"&&x.score>0.6){
+ if(!model)return;
+ const preds=await model.detect(video);
+ preds.forEach(p=>{
+  if(p.class==="person"&&p.score>0.6){
    statusEl.textContent="🧍 انسان";
    siren();
   }
  });
 }
 
-/* ---- loop ---- */
+/* ---------- loop ---------- */
 function loop(){
  detectMotion();
- setTimeout(loop,800);
+ setTimeout(loop,900);
 }
 
-/* ---- start ---- */
-async function arm(){
+/* ---------- buttons ---------- */
+document.getElementById("frontCam").onclick=async()=>{
  unlockAudio();
+ facing="user";
+ statusEl.textContent="📷 جلو";
  await startCamera();
- loop();
- setTimeout(startAI,3000);
- setArmed(true);
- statusEl.textContent="🟢 فعال";
-}
-
-/* manual */
-btn.onclick=arm;
-
-/* auto */
-window.onload=()=>{
- if(armed()){
-  statusEl.textContent="🔄 فعال‌سازی خودکار";
-  arm();
- }
 };
+document.getElementById("backCam").onclick=async()=>{
+ unlockAudio();
+ facing="environment";
+ statusEl.textContent="📷 پشت";
+ await startCamera();
+};
+document.getElementById("sirenBtn").onclick=()=>{
+ unlockAudio();
+ siren();
+};
+
+/* ---------- init ---------- */
+(async()=>{
+ await startCamera();
+ loadAI();
+ loop();
+})();

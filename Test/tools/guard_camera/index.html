@@ -4,18 +4,21 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Guard Camera</title>
-<link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<h3>🛡 دوربین نگهبان</h3>
-<div id="status">آماده…</div>
+<h3>🛡 Guard Camera</h3>
+<div id="status">آماده</div>
 
 <video id="video" autoplay playsinline muted></video>
 <canvas id="canvas"></canvas>
 
-<button id="startBtn">فعال‌سازی سیستم</button>
+<div class="buttons">
+  <button id="frontCam">📷 جلو</button>
+  <button id="backCam">📷 پشت</button>
+  <button id="sirenBtn">🚨 آژیر</button>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.14.0"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
