@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Guard Cam Enterprise 🛡️</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <link rel="manifest" href="manifest.json"/>
+    <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+    <div id="app">
+        <h1>دوربین نگهبان پایدار (Client-Side)</h1>
+
+        <div id="status-display">INIT</div>
+
+        <video id="cam" autoplay muted playsinline></video>
+        <canvas id="motion-canvas" style="display:none;"></canvas>
+
+        <div class="controls">
+            <button onclick="App.start()" id="start-btn">شروع پایش</button>
+            <button onclick="App.switchCamera()" id="switch-btn">سوئیچ دوربین</button>
+            <button onclick="App.toggleMode()" id="mode-btn">حالت: Balanced</button>
+        </div>
+
+        <div class="info">
+            <p>ذخیره سازی: <span id="storage-status">N/A</span></p>
+        </div>
+
+        <pre id="log"></pre>
+    </div>
+
+    <!-- AI Libraries (Hosted externally for simplicity) -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
+
+    <!-- Local Scripts (Includes all logic) -->
+    <script src="js/main.js" type="module"></script>
+</body>
+</html>

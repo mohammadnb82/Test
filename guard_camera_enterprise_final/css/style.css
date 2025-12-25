@@ -1,0 +1,61 @@
+body {
+    background: #0f172a;
+    color: #e5e7eb;
+    font-family: 'Tahoma', sans-serif;
+    text-align: center;
+    padding: 20px;
+}
+#app {
+    max-width: 600px;
+    margin: auto;
+}
+video {
+    width: 100%;
+    border-radius: 10px;
+    margin: 20px 0;
+    box-shadow: 0 0 20px #000;
+    background: #1e293b;
+}
+.controls button {
+    padding: 12px 20px;
+    margin: 8px 5px;
+    font-size: 16px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+#start-btn {
+    background: #10b981;
+    color: white;
+}
+#start-btn.active {
+    background: #ef4444;
+}
+#status-display {
+    font-weight: bold;
+    color: #fcd34d;
+    margin-bottom: 10px;
+}
+#status-display.ALERTING {
+    color: #ef4444;
+    animation: blink 1s infinite;
+}
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+pre {
+    text-align: left;
+    background: #020617;
+    padding: 10px;
+    border-radius: 5px;
+    height: 150px;
+    overflow-y: scroll;
+    margin-top: 20px;
+    font-size: 0.8em;
+}
+.info {
+    font-size: 0.9em;
+    color: #94a3b8;
+}

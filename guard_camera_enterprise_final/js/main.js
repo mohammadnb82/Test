@@ -1,141 +1,3 @@
-import os
-import sys
-from textwrap import dedent
-
-BASE = "guard_camera_enterprise_final"
-MODELS_DIR = "models"
-
-# ----------------------------------------------------
-# Helper Functions
-# ----------------------------------------------------
-
-def write_file(path, content):
-    full_path = os.path.join(BASE, path)
-    os.makedirs(os.path.dirname(full_path), exist_ok=True)
-    with open(full_path, "w", encoding="utf-8") as f:
-        f.write(content.strip() + "\n")
-
-def create_directory_structure():
-    directories = [
-        f"{BASE}/css",
-        f"{BASE}/js",
-        f"{BASE}/{MODELS_DIR}"
-    ]
-    for d in directories:
-        os.makedirs(d, exist_ok=True)
-
-# ----------------------------------------------------
-# File Contents
-# ----------------------------------------------------
-
-INDEX_HTML = dedent("""
-<!DOCTYPE html>
-<html lang="fa">
-<head>
-    <meta charset="UTF-8"/>
-    <title>Guard Cam Enterprise 🛡️</title>
-    <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <link rel="manifest" href="manifest.json"/>
-    <link rel="stylesheet" href="css/style.css"/>
-</head>
-<body>
-    <div id="app">
-        <h1>دوربین نگهبان پایدار (Client-Side)</h1>
-
-        <div id="status-display">INIT</div>
-
-        <video id="cam" autoplay muted playsinline></video>
-        <canvas id="motion-canvas" style="display:none;"></canvas>
-
-        <div class="controls">
-            <button onclick="App.start()" id="start-btn">شروع پایش</button>
-            <button onclick="App.switchCamera()" id="switch-btn">سوئیچ دوربین</button>
-            <button onclick="App.toggleMode()" id="mode-btn">حالت: Balanced</button>
-        </div>
-        
-        <div class="info">
-            <p>ذخیره سازی: <span id="storage-status">N/A</span></p>
-        </div>
-
-        <pre id="log"></pre>
-    </div>
-
-    <!-- AI Libraries (Hosted externally for simplicity) -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
-    <script src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
-    
-    <!-- Local Scripts (Includes all logic) -->
-    <script src="js/main.js" type="module"></script>
-</body>
-</html>
-""")
-
-STYLE_CSS = dedent("""
-body {
-    background: #0f172a;
-    color: #e5e7eb;
-    font-family: 'Tahoma', sans-serif;
-    text-align: center;
-    padding: 20px;
-}
-#app {
-    max-width: 600px;
-    margin: auto;
-}
-video {
-    width: 100%;
-    border-radius: 10px;
-    margin: 20px 0;
-    box-shadow: 0 0 20px #000;
-    background: #1e293b;
-}
-.controls button {
-    padding: 12px 20px;
-    margin: 8px 5px;
-    font-size: 16px;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-    transition: background 0.3s;
-}
-#start-btn {
-    background: #10b981;
-    color: white;
-}
-#start-btn.active {
-    background: #ef4444;
-}
-#status-display {
-    font-weight: bold;
-    color: #fcd34d;
-    margin-bottom: 10px;
-}
-#status-display.ALERTING {
-    color: #ef4444;
-    animation: blink 1s infinite;
-}
-@keyframes blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-}
-pre {
-    text-align: left;
-    background: #020617;
-    padding: 10px;
-    border-radius: 5px;
-    height: 150px;
-    overflow-y: scroll;
-    margin-top: 20px;
-    font-size: 0.8em;
-}
-.info {
-    font-size: 0.9em;
-    color: #94a3b8;
-}
-""")
-
-MAIN_JS = dedent("""
 // This script combines all logic (State machine, Hardening, Recovery)
 // The structure reflects the internal modularization achieved in the last cycles.
 
@@ -168,11 +30,11 @@ const App = {
 
     log(msg){
         const timestamp = new Date().toLocaleTimeString('fa');
-        logEl.textContent = `[${timestamp}] ${msg}\\n` + logEl.textContent;
+        logEl.textContent = `[${timestamp}] ${msg}\n` + logEl.textContent;
         // Keep log scrollable (limited length for performance)
-        const lines = logEl.textContent.split('\\n');
+        const lines = logEl.textContent.split('\n');
         if (lines.length > 50) {
-            logEl.textContent = lines.slice(0, 50).join('\\n');
+            logEl.textContent = lines.slice(0, 50).join('\n');
         }
     },
 
@@ -196,7 +58,7 @@ const App = {
     async start(){
         if(this.STATE !== STATES.INIT) return;
         this.log("شروع فرآیند...");
-        
+
         try {
             await this.startCamera();
             await this.loadAI();
@@ -248,7 +110,7 @@ const App = {
             this.log(`تب فعال است: ${this.isTabActive}`);
             // If tab goes inactive, throttle down performance
         });
-        
+
         // Hardening T3: Storage Quota Check
         if (navigator.storage && navigator.storage.estimate) {
             setInterval(async () => {
@@ -263,7 +125,7 @@ const App = {
     watch(){
         const canvas = document.getElementById("motion-canvas");
         const ctx = canvas.getContext("2d");
-        
+
         const processFrame = async () => {
             if (this.STATE === STATES.COOLDOWN || !this.stream || !video.readyState >= 2) {
                 // If camera stream is broken, attempt recovery (Hardening T4)
@@ -308,14 +170,14 @@ const App = {
             if (motion) {
                 this.log("🚨 حرکت شناسایی شد!");
                 this.setState(STATES.ALERTING);
-                
+
                 // ------------------
                 // AI Detection (T5 refinement: AI only on motion)
                 // ------------------
                 if (this.coco) {
                     const predictions = await this.coco.detect(video);
                     const personDetected = predictions.some(p => p.class === "person" && p.score > 0.6);
-                    
+
                     if (personDetected) {
                         this.log("👤 شخص شناسایی شد! واکنش فعالسازی...");
                         this.beep();
@@ -343,14 +205,14 @@ const App = {
         // Start the continuous processing loop
         setTimeout(processFrame, 100);
     },
-    
+
     // Hardening T7: Robust Recording and Cooldown
     record(){
         if(this.isRecording) return;
-        
+
         this.isRecording = true;
         this.log("🎥 ضبط ۵ ثانیه آغاز شد.");
-        
+
         this.recorder = new MediaRecorder(this.stream);
         this.chunks=[];
 
@@ -358,7 +220,7 @@ const App = {
         this.recorder.onstop = () => {
             const blob = new Blob(this.chunks, { type: "video/webm" });
             const url = URL.createObjectURL(blob);
-            
+
             // Hardening T9: Automatic Download (Simplified storage for now)
             const a = document.createElement("a");
             a.href = url;
@@ -367,7 +229,7 @@ const App = {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            
+
             this.isRecording = false;
             this.setState(STATES.COOLDOWN);
             setTimeout(() => this.setState(STATES.WATCHING), 10000); // 10s cooldown
@@ -382,7 +244,7 @@ const App = {
     // T6 refinement: Robust Web Audio API (ensures sound plays)
     beep(){
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        
+
         // Ensure context is running if blocked by browser policy
         if (ctx.state === 'suspended') {
             ctx.resume();
@@ -396,7 +258,7 @@ const App = {
         o.connect(g);
         g.connect(ctx.destination);
         o.start();
-        
+
         // Alarm pattern
         setTimeout(() => o.stop(), 500); 
     }
@@ -404,45 +266,3 @@ const App = {
 
 window.App = App;
 App.toggleMode(); // Initialize button state on load
-""")
-
-MANIFEST_JSON = dedent("""
-{
-  "name": "دوربین نگهبان پایدار",
-  "short_name": "GuardCamPro",
-  "start_url": "./index.html",
-  "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a"
-}
-""")
-
-# ----------------------------------------------------
-# Main Execution
-# ----------------------------------------------------
-
-def build_project():
-    print(f"🛠️ در حال ساخت پروژه نهایی در پوشه: {BASE}...")
-    
-    create_directory_structure()
-    
-    # Write files
-    write_file("index.html", INDEX_HTML)
-    write_file("manifest.json", MANIFEST_JSON)
-    write_file("css/style.css", STYLE_CSS)
-    write_file("js/main.js", MAIN_JS)
-    
-    # Note on AI models: Face-API models are loaded dynamically from CDN in main.js
-    # No local files needed for this 100% client-side version.
-    
-    print("\n=============================================")
-    print("✅ ساخت پروژه 'دوربین نگهبان پایدار' با موفقیت به پایان رسید.")
-    print(f"پروژه آماده در پوشه: {BASE}/")
-    print("نحوه اجرا: فایل index.html را در مرورگر باز کنید.")
-    print("=============================================")
-
-if __name__ == "__main__":
-    if sys.version_info < (3, 6):
-        print("⚠️ نیاز به پایتون 3.6 یا بالاتر.")
-    else:
-        build_project()
