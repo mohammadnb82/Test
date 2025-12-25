@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+<meta charset="UTF-8">
+<title>Guard Camera</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="manifest.json">
+<style>
+body{background:#111;color:#eee;font-family:sans-serif;text-align:center}
+video{width:90%;max-width:520px;border:2px solid #444}
+button{margin:4px;padding:10px}
+</style>
+</head>
+<body>
+
+<h2>🛡 Guard Camera (Client‑Side Full)</h2>
+
+<video id="cam" autoplay muted playsinline></video><br>
+
+<button onclick="Guard.start()">▶ شروع</button>
+<button onclick="Guard.stop()">⏹ توقف</button>
+<button onclick="Guard.toggleRecord()">⏺ ضبط</button>
+
+<p id="status">آماده</p>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.16.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+<script src="assets/main.js"></script>
+
+<script>
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js');
+}
+</script>
+</body>
+</html>
