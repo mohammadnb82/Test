@@ -1,145 +1,182 @@
+import os
+import shutil
 from pathlib import Path
-import json
 
-ROOT = Path("Test/tools/guard_camera")
-ASSETS = ROOT / "assets"
+BASE = Path("Test/tools/guard_camera")
 
-ASSETS.mkdir(parents=True, exist_ok=True)
+def reset_dir():
+    if BASE.exists():
+        shutil.rmtree(BASE)
+    BASE.mkdir(parents=True)
 
-# ---------- index.html ----------
-(ROOT / "index.html").write_text("""<!DOCTYPE html>
+def write(path, content):
+    path.write_text(content, encoding="utf-8")
+
+def build():
+    reset_dir()
+
+    # index.html
+    write(BASE / "index.html", """<!DOCTYPE html>
 <html lang="fa">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Guard Camera</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="manifest" href="manifest.json">
-<style>
-body{background:#111;color:#eee;font-family:sans-serif;text-align:center}
-video{width:90%;max-width:520px;border:2px solid #444}
-button{margin:4px;padding:10px}
-</style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<h2>🛡 Guard Camera (Client‑Side Full)</h2>
+<h2>🛡 دوربین نگهبان</h2>
 
-<video id="cam" autoplay muted playsinline></video><br>
+<div id="status">⏳ آماده‌سازی…</div>
 
-<button onclick="Guard.start()">▶ شروع</button>
-<button onclick="Guard.stop()">⏹ توقف</button>
-<button onclick="Guard.toggleRecord()">⏺ ضبط</button>
+<video id="video" playsinline autoplay muted></video>
+<canvas id="canvas"></canvas>
 
-<p id="status">آماده</p>
+<div class="controls">
+  <button id="startBtn">فعال‌سازی سیستم</button>
+  <button id="switchBtn">تغییر دوربین</button>
+  <button id="sirenBtn">تست آژیر</button>
+</div>
 
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.16.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.14.0"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
-<script src="assets/main.js"></script>
+<script src="app.js"></script>
 
-<script>
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('sw.js');
-}
-</script>
 </body>
 </html>
-""", encoding="utf-8")
+""")
 
-# ---------- main.js ----------
-(ASSETS / "main.js").write_text("""const Guard = (() => {
-  let video, stream, canvas, ctx, lastFrame;
-  let audioCtx, recorder, chunks=[], recording=false;
-  let model;
+    # style.css
+    write(BASE / "style.css", """body {
+  margin:0;
+  padding:10px;
+  font-family:sans-serif;
+  background:#0b0b0b;
+  color:#fff;
+  text-align:center;
+}
+video, canvas {
+  width:100%;
+  max-height:60vh;
+  background:#000;
+}
+.controls button {
+  margin:5px;
+  padding:10px;
+  font-size:16px;
+}
+#status {
+  margin:8px;
+  color:#0f0;
+}
+""")
 
-  const status = t => document.getElementById("status").innerText = t;
+    # app.js
+    write(BASE / "app.js", """let video = document.getElementById("video");
+let canvas = document.getElementById("canvas");
+let ctx = canvas.getContext("2d");
+let statusEl = document.getElementById("status");
 
-  async function start(){
-    video = document.getElementById("cam");
-    stream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
-    video.srcObject = stream;
+let stream;
+let facing = "environment";
+let audioCtx;
+let sirenOsc;
+let model;
+let aiOn = false;
+let lastFrame = null;
 
-    canvas = document.createElement("canvas");
-    ctx = canvas.getContext("2d");
+async function setupCamera() {
+  stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: facing },
+    audio: false
+  });
+  video.srcObject = stream;
+}
 
-    recorder = new MediaRecorder(stream);
-    recorder.ondataavailable = e => chunks.push(e.data);
-    recorder.onstop = save;
+function unlockAudio() {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
 
-    status("⏳ بارگذاری AI...");
-    model = await cocoSsd.load();
-    status("✅ فعال");
+function siren() {
+  if (!audioCtx) return;
+  sirenOsc = audioCtx.createOscillator();
+  sirenOsc.frequency.value = 800;
+  sirenOsc.connect(audioCtx.destination);
+  sirenOsc.start();
+  setTimeout(() => sirenOsc.stop(), 800);
+}
 
-    requestAnimationFrame(loop);
-  }
+async function loadAI() {
+  model = await cocoSsd.load();
+  aiOn = true;
+  statusEl.textContent = "✅ AI فعال است";
+}
 
-  function stop(){
-    stream.getTracks().forEach(t=>t.stop());
-    status("⏹ متوقف شد");
-  }
+function detectMotion() {
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  ctx.drawImage(video,0,0);
+  let frame = ctx.getImageData(0,0,canvas.width,canvas.height);
 
-  function toggleRecord(){
-    if(!recording){chunks=[];recorder.start();recording=true;status("🔴 ضبط");}
-    else{recorder.stop();recording=false;}
-  }
-
-  function save(){
-    const b=new Blob(chunks,{type:"video/webm"});
-    const a=document.createElement("a");
-    a.href=URL.createObjectURL(b);
-    a.download="guard.webm";
-    a.click();
-    status("💾 ذخیره شد");
-  }
-
-  function beep(){
-    if(!audioCtx) audioCtx=new AudioContext();
-    const o=audioCtx.createOscillator();
-    o.frequency.value=1000;
-    o.connect(audioCtx.destination);
-    o.start(); setTimeout(()=>o.stop(),200);
-  }
-
-  async function loop(){
-    if(!video.videoWidth){requestAnimationFrame(loop);return;}
-    canvas.width=video.videoWidth; canvas.height=video.videoHeight;
-    ctx.drawImage(video,0,0);
-
-    const frame=ctx.getImageData(0,0,canvas.width,canvas.height).data;
-    if(lastFrame){
-      let diff=0;
-      for(let i=0;i<frame.length;i+=60)
-        diff+=Math.abs(frame[i]-lastFrame[i]);
-      if(diff>6000){status("🚨 حرکت");beep();}
+  if (lastFrame) {
+    let diff = 0;
+    for (let i=0;i<frame.data.length;i+=40) {
+      diff += Math.abs(frame.data[i] - lastFrame.data[i]);
     }
-    lastFrame=frame.slice(0);
-
-    const preds = await model.detect(canvas);
-    preds.forEach(p=>{
-      if(p.class==="person" && p.score>0.6){
-        status("🚨 انسان شناسایی شد");
-        beep();
-      }
-    });
-
-    requestAnimationFrame(loop);
+    if (diff > 5000) {
+      siren();
+      if (aiOn) detectHuman();
+    }
   }
+  lastFrame = frame;
+}
 
-  return {start,stop,toggleRecord};
-})();
-""", encoding="utf-8")
+async function detectHuman() {
+  const preds = await model.detect(video);
+  preds.forEach(p=>{
+    if(p.class==="person" && p.score>0.6){
+      statusEl.textContent = "🚨 انسان شناسایی شد";
+      siren();
+    }
+  });
+}
 
-# ---------- PWA ----------
-(ROOT / "manifest.json").write_text(json.dumps({
-  "name":"Guard Camera",
-  "short_name":"Guard",
-  "start_url":".",
-  "display":"standalone",
-  "background_color":"#111",
-  "theme_color":"#111"
-}, indent=2), encoding="utf-8")
+function loop() {
+  if(video.readyState === 4) detectMotion();
+  requestAnimationFrame(loop);
+}
 
-(ROOT / "sw.js").write_text("""self.addEventListener('fetch',e=>{
-  e.respondWith(fetch(e.request).catch(()=>new Response()));
-});""", encoding="utf-8")
+document.getElementById("startBtn").onclick = async ()=>{
+  unlockAudio();
+  await setupCamera();
+  await loadAI();
+  loop();
+  statusEl.textContent = "🟢 سیستم فعال شد";
+};
 
-print("✅ Guard Camera FULL ساخ → Test/tools/guard_camera")
+document.getElementById("switchBtn").onclick = async ()=>{
+  facing = facing==="environment"?"user":"environment";
+  stream.getTracks().forEach(t=>t.stop());
+  await setupCamera();
+};
+
+document.getElementById("sirenBtn").onclick = siren;
+""")
+
+    # manifest.json
+    write(BASE / "manifest.json", """{
+  "name": "Guard Camera",
+  "short_name": "GuardCam",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000"
+}
+""")
+
+    print("✅ Guard Camera rebuilt successfully.")
+
+if __name__ == "__main__":
+    build()
