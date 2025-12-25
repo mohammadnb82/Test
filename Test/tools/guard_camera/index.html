@@ -9,18 +9,13 @@
 </head>
 <body>
 
-<h2>🛡 دوربین نگهبان</h2>
+<h3>🛡 دوربین نگهبان</h3>
+<div id="status">آماده…</div>
 
-<div id="status">⏳ آماده‌سازی…</div>
-
-<video id="video" playsinline autoplay muted></video>
+<video id="video" autoplay playsinline muted></video>
 <canvas id="canvas"></canvas>
 
-<div class="controls">
-  <button id="startBtn">فعال‌سازی سیستم</button>
-  <button id="switchBtn">تغییر دوربین</button>
-  <button id="sirenBtn">تست آژیر</button>
-</div>
+<button id="startBtn">فعال‌سازی سیستم</button>
 
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.14.0"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
