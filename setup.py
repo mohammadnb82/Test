@@ -1,22 +1,21 @@
-import os
-import shutil
 from pathlib import Path
+import shutil
 
 BASE = Path("Test/tools/guard_camera")
 
-def reset_dir():
+def reset():
     if BASE.exists():
         shutil.rmtree(BASE)
     BASE.mkdir(parents=True)
 
-def write(path, content):
-    path.write_text(content, encoding="utf-8")
+def write(name, content):
+    (BASE / name).write_text(content, encoding="utf-8")
 
-def build():
-    reset_dir()
+def main():
+    reset()
 
-    # index.html
-    write(BASE / "index.html", """<!DOCTYPE html>
+    # ---------- index.html ----------
+    write("index.html", """<!DOCTYPE html>
 <html lang="fa">
 <head>
 <meta charset="UTF-8">
@@ -27,18 +26,13 @@ def build():
 </head>
 <body>
 
-<h2>🛡 دوربین نگهبان</h2>
+<h3>🛡 دوربین نگهبان</h3>
+<div id="status">آماده…</div>
 
-<div id="status">⏳ آماده‌سازی…</div>
-
-<video id="video" playsinline autoplay muted></video>
+<video id="video" autoplay playsinline muted></video>
 <canvas id="canvas"></canvas>
 
-<div class="controls">
-  <button id="startBtn">فعال‌سازی سیستم</button>
-  <button id="switchBtn">تغییر دوربین</button>
-  <button id="sirenBtn">تست آژیر</button>
-</div>
+<button id="startBtn">فعال‌سازی سیستم</button>
 
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.14.0"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
@@ -48,135 +42,126 @@ def build():
 </html>
 """)
 
-    # style.css
-    write(BASE / "style.css", """body {
-  margin:0;
-  padding:10px;
-  font-family:sans-serif;
-  background:#0b0b0b;
-  color:#fff;
-  text-align:center;
+    # ---------- style.css ----------
+    write("style.css", """body{
+background:#000;color:#fff;
+font-family:sans-serif;
+text-align:center;margin:0;padding:10px
 }
-video, canvas {
-  width:100%;
-  max-height:60vh;
-  background:#000;
-}
-.controls button {
-  margin:5px;
-  padding:10px;
-  font-size:16px;
-}
-#status {
-  margin:8px;
-  color:#0f0;
-}
+video,canvas{width:100%;max-height:60vh}
+button{padding:12px;font-size:16px;margin-top:10px}
+#status{color:#0f0;margin:8px}
 """)
 
-    # app.js
-    write(BASE / "app.js", """let video = document.getElementById("video");
-let canvas = document.getElementById("canvas");
-let ctx = canvas.getContext("2d");
-let statusEl = document.getElementById("status");
+    # ---------- app.js ----------
+    write("app.js", """const video=document.getElementById("video");
+const canvas=document.getElementById("canvas");
+const ctx=canvas.getContext("2d");
+const statusEl=document.getElementById("status");
+const btn=document.getElementById("startBtn");
 
-let stream;
-let facing = "environment";
-let audioCtx;
-let sirenOsc;
-let model;
-let aiOn = false;
-let lastFrame = null;
+let stream,lastFrame=null,audioCtx,model=null,aiReady=false;
 
-async function setupCamera() {
-  stream = await navigator.mediaDevices.getUserMedia({
-    video: { facingMode: facing },
-    audio: false
-  });
-  video.srcObject = stream;
+/* ---- storage ---- */
+const armed=()=>localStorage.getItem("armed")==="1";
+const setArmed=v=>localStorage.setItem("armed",v?"1":"0");
+
+/* ---- audio ---- */
+function unlockAudio(){
+ audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+ audioCtx.resume();
+}
+function siren(){
+ if(!audioCtx)return;
+ const o=audioCtx.createOscillator();
+ o.frequency.value=900;
+ o.connect(audioCtx.destination);
+ o.start();
+ setTimeout(()=>o.stop(),600);
 }
 
-function unlockAudio() {
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+/* ---- camera ---- */
+async function startCamera(){
+ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
+ video.srcObject=stream;
+ return new Promise(r=>video.onloadedmetadata=()=>{video.play();r();});
 }
 
-function siren() {
-  if (!audioCtx) return;
-  sirenOsc = audioCtx.createOscillator();
-  sirenOsc.frequency.value = 800;
-  sirenOsc.connect(audioCtx.destination);
-  sirenOsc.start();
-  setTimeout(() => sirenOsc.stop(), 800);
-}
-
-async function loadAI() {
-  model = await cocoSsd.load();
-  aiOn = true;
-  statusEl.textContent = "✅ AI فعال است";
-}
-
-function detectMotion() {
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  ctx.drawImage(video,0,0);
-  let frame = ctx.getImageData(0,0,canvas.width,canvas.height);
-
-  if (lastFrame) {
-    let diff = 0;
-    for (let i=0;i<frame.data.length;i+=40) {
-      diff += Math.abs(frame.data[i] - lastFrame.data[i]);
-    }
-    if (diff > 5000) {
-      siren();
-      if (aiOn) detectHuman();
-    }
+/* ---- motion ---- */
+function detectMotion(){
+ if(video.videoWidth===0)return;
+ canvas.width=video.videoWidth;
+ canvas.height=video.videoHeight;
+ ctx.drawImage(video,0,0);
+ const f=ctx.getImageData(0,0,canvas.width,canvas.height);
+ if(lastFrame){
+  let d=0;
+  for(let i=0;i<f.data.length;i+=50)
+   d+=Math.abs(f.data[i]-lastFrame.data[i]);
+  if(d>3000){
+   statusEl.textContent="🚨 حرکت";
+   siren();
+   if(aiReady)detectHuman();
   }
-  lastFrame = frame;
+ }
+ lastFrame=f;
 }
 
-async function detectHuman() {
-  const preds = await model.detect(video);
-  preds.forEach(p=>{
-    if(p.class==="person" && p.score>0.6){
-      statusEl.textContent = "🚨 انسان شناسایی شد";
-      siren();
-    }
-  });
+/* ---- AI ---- */
+async function startAI(){
+ model=await cocoSsd.load();
+ aiReady=true;
+ statusEl.textContent="✅ AI فعال";
+}
+async function detectHuman(){
+ const p=await model.detect(video);
+ p.forEach(x=>{
+  if(x.class==="person"&&x.score>0.6){
+   statusEl.textContent="🧍 انسان";
+   siren();
+  }
+ });
 }
 
-function loop() {
-  if(video.readyState === 4) detectMotion();
-  requestAnimationFrame(loop);
+/* ---- loop ---- */
+function loop(){
+ detectMotion();
+ setTimeout(loop,800);
 }
 
-document.getElementById("startBtn").onclick = async ()=>{
-  unlockAudio();
-  await setupCamera();
-  await loadAI();
-  loop();
-  statusEl.textContent = "🟢 سیستم فعال شد";
+/* ---- start ---- */
+async function arm(){
+ unlockAudio();
+ await startCamera();
+ loop();
+ setTimeout(startAI,3000);
+ setArmed(true);
+ statusEl.textContent="🟢 فعال";
+}
+
+/* manual */
+btn.onclick=arm;
+
+/* auto */
+window.onload=()=>{
+ if(armed()){
+  statusEl.textContent="🔄 فعال‌سازی خودکار";
+  arm();
+ }
 };
-
-document.getElementById("switchBtn").onclick = async ()=>{
-  facing = facing==="environment"?"user":"environment";
-  stream.getTracks().forEach(t=>t.stop());
-  await setupCamera();
-};
-
-document.getElementById("sirenBtn").onclick = siren;
 """)
 
-    # manifest.json
-    write(BASE / "manifest.json", """{
-  "name": "Guard Camera",
-  "short_name": "GuardCam",
-  "start_url": ".",
-  "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#000000"
-}
-""")
+    # ---------- manifest.json ----------
+    write("manifest.json", """{
+"name":"Guard Camera",
+"short_name":"GuardCam",
+"start_url":".",
+"display":"standalone",
+"theme_color":"#000",
+"background_color":"#000"
+}""")
 
-    print("✅ Guard Camera rebuilt successfully.")
+    print("✅ Guard Camera site built successfully.")
 
 if __name__ == "__main__":
-    build()
+    main()
