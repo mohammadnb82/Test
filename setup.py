@@ -140,11 +140,18 @@ function loop(){
 document.getElementById("flip").onclick=flip;
 document.getElementById("siren").onclick=toggleSiren;
 
-updateLine(slider.value);(); loop();
+updateLine(slider.value);
+cam(); loop();
 """
 
 def main():
     if BASE.exists():
         shutil.rmtree(BASE)
     BASE.mkdir(parents=True)
-    (BASE/"index.html").
+    (BASE/"index.html").write_text(HTML,"utf8")
+    (BASE/"style.css").write_text(CSS,"utf8")
+    (BASE/"app.js").write_text(JS,"utf8")
+    print("✅ iOS‑safe cam1 rebuilt")
+
+if __name__=="__main__":
+    main()
