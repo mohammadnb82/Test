@@ -1,33 +1,32 @@
+const CONF={
+  w:64,h:48,diff:20,gain:5
+};
+
 const video=document.getElementById("webcam");
 const canvas=document.getElementById("proc");
 const ctx=canvas.getContext("2d",{willReadFrequently:true});
 
-const graph=document.getElementById("graph");
 const bar=document.getElementById("bar");
 const line=document.getElementById("line");
-
+const txtTh=document.getElementById("txt-th");
+const txtMo=document.getElementById("txt-mo");
 const slider=document.getElementById("slider");
-const tval=document.getElementById("tval");
-const mval=document.getElementById("mval");
+const flash=document.getElementById("alarm-flash");
+const btnS=document.getElementById("btn-siren");
 
-let last=null,stream=null,facing="environment";
-let siren=false,audio=null;
+let stream=null,facing="environment";
+let last=null,siren=false,ac=null;
 
-canvas.width=64; canvas.height=48;
+canvas.width=CONF.w; canvas.height=CONF.h;
 
-function updateLine(v){
-  tval.textContent=v;
-  requestAnimationFrame(()=>{
-    const w=graph.clientWidth;
-    const x=(v/100)*w;
-    const center=x-(line.offsetWidth/2);
-    line.style.transform=`translateX(${center}px)`;
-  });
+function updateThresh(v){
+  line.style.left=v+"%";
+  txtTh.textContent=v;
 }
 
-slider.addEventListener("input",e=>updateLine(+e.target.value));
+slider.oninput=e=>updateThresh(e.target.value);
 
-async function cam(){
+async function startCam(){
   if(stream) stream.getTracks().forEach(t=>t.stop());
   stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:facing}});
   video.srcObject=stream;
@@ -35,43 +34,50 @@ async function cam(){
   last=null;
 }
 
-function flip(){
+function flipCam(){
   facing=facing==="environment"?"user":"environment";
-  cam();
+  startCam();
 }
 
 function toggleSiren(){
-  if(!audio) audio=new (AudioContext||webkitAudioContext)();
-  if(audio.state==="suspended") audio.resume();
+  if(!ac) ac=new (AudioContext||webkitAudioContext)();
+  if(ac.state==="suspended") ac.resume();
   siren=!siren;
-  document.getElementById("siren").classList.toggle("active",siren);
+  btnS.classList.toggle("active",siren);
 }
 
 function beep(){
-  if(!siren) return;
-  const o=audio.createOscillator();
-  o.frequency.value=900;
-  o.connect(audio.destination);
-  o.start();
-  setTimeout(()=>o.stop(),120);
+  if(!siren||!ac||ac.state!=="running")return;
+  const o=ac.createOscillator();
+  const g=ac.createGain();
+  o.frequency.value=800;
+  g.gain.value=.3;
+  o.connect(g); g.connect(ac.destination);
+  o.start(); o.stop(ac.currentTime+.1);
 }
 
 function loop(){
   if(video.videoWidth){
-    ctx.drawImage(video,0,0,64,48);
-    const f=ctx.getImageData(0,0,64,48);
+    ctx.drawImage(video,0,0,CONF.w,CONF.h);
+    const f=ctx.getImageData(0,0,CONF.w,CONF.h);
     if(last){
-      let d=0;
-      for(let i=0;i<f.data.length;i+=32)
-        d+=Math.abs(f.data[i]-last.data[i]);
-      const m=Math.min(100,d*0.03);
+      let c=0;
+      for(let i=0;i<f.data.length;i+=4){
+        const d=Math.abs(f.data[i]-last.data[i]);
+        if(d>CONF.diff) c++;
+      }
+      let m=Math.floor(c/(CONF.w*CONF.h)*100*CONF.gain);
+      if(m>100)m=100;
       bar.style.width=m+"%";
-      mval.textContent=m.toFixed(0);
-      if(m>=slider.value && siren){
-        document.getElementById("alarm-flash").style.display="block";
+      txtMo.textContent=m;
+      const th=+slider.value;
+      if(m>=th && th>0){
+        bar.style.background="#ff453a";
+        flash.style.display="block";
         beep();
       }else{
-        document.getElementById("alarm-flash").style.display="none";
+        bar.style.background="#32d74b";
+        flash.style.display="none";
       }
     }
     last=f;
@@ -79,8 +85,6 @@ function loop(){
   requestAnimationFrame(loop);
 }
 
-document.getElementById("flip").onclick=flip;
-document.getElementById("siren").onclick=toggleSiren;
-
-updateLine(slider.value);
-cam(); loop();
+updateThresh(slider.value);
+startCam();
+loop();
