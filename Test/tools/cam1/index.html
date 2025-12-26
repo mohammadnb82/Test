@@ -1,9 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Cam1 – Motion Guard</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Cam1</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -13,25 +13,25 @@
   <div id="alarm-flash"></div>
 </div>
 
-<canvas id="proc-canvas"></canvas>
+<canvas id="proc"></canvas>
 
-<div class="controls-card">
+<div class="panel">
 
-  <div class="graph-wrapper">
-    <div id="bar-motion" class="motion-bar"></div>
-    <div id="line-thresh" class="threshold-line"></div>
+  <div id="graph" class="graph">
+    <div id="bar" class="bar"></div>
+    <div id="line" class="line"></div>
   </div>
 
-  <div class="stats-row">
-    <span>Trigger: <b><span id="txt-thresh">40</span>%</b></span>
-    <span>Motion: <b><span id="txt-motion">0</span>%</b></span>
+  <div class="stats">
+    <span>Trigger: <b><span id="tval">40</span>%</b></span>
+    <span>Motion: <b><span id="mval">0</span>%</b></span>
   </div>
 
-  <input type="range" id="input-slider" min="0" max="100" value="40">
+  <input id="slider" type="range" min="0" max="100" value="40">
 
-  <div class="buttons-grid">
-    <button class="btn btn-grey" id="btnFlip">🔄 Flip Cam</button>
-    <button class="btn btn-red" id="btnSiren">🔔 Siren</button>
+  <div class="btns">
+    <button id="flip">🔄 Flip Cam</button>
+    <button id="siren">🔔 Siren</button>
   </div>
 
 </div>

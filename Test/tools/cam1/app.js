@@ -1,79 +1,80 @@
 const video = document.getElementById("webcam");
-const canvas = document.getElementById("proc-canvas");
+const canvas = document.getElementById("proc");
 const ctx = canvas.getContext("2d",{willReadFrequently:true});
 
-const bar = document.getElementById("bar-motion");
-const flash = document.getElementById("alarm-flash");
-const slider = document.getElementById("input-slider");
-const txtThresh = document.getElementById("txt-thresh");
-const txtMotion = document.getElementById("txt-motion");
-const threshLine = document.getElementById("line-thresh");
+const bar = document.getElementById("bar");
+const line = document.getElementById("line");
+const graph = document.getElementById("graph");
 
-let facing="environment",stream=null;
-let lastFrame=null;
-let siren=false,audioCtx=null;
+const slider = document.getElementById("slider");
+const tval = document.getElementById("tval");
+const mval = document.getElementById("mval");
+
+let last=null, stream=null, facing="environment";
+let siren=false, audio=null;
 
 canvas.width=64; canvas.height=48;
 
-async function startCamera(){
+function updateLine(v){
+  tval.innerText = v;
+  const w = graph.clientWidth;
+  const x = (v/100)*w;
+  line.style.transform = `translateX(${x}px)`;
+}
+
+slider.oninput = e => updateLine(+e.target.value);
+
+async function cam(){
  if(stream) stream.getTracks().forEach(t=>t.stop());
  stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:facing}});
  video.srcObject = stream;
  video.play();
- video.classList.toggle("mirror",facing==="user");
- lastFrame=null;
+ last=null;
 }
 
-function flipCam(){
+function flip(){
  facing = facing==="environment"?"user":"environment";
- startCamera();
+ cam();
 }
 
 function toggleSiren(){
- if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)();
- if(audioCtx.state==="suspended") audioCtx.resume();
+ if(!audio) audio = new (AudioContext||webkitAudioContext)();
+ if(audio.state==="suspended") audio.resume();
  siren=!siren;
- document.getElementById("btnSiren").classList.toggle("active",siren);
+ document.getElementById("siren").classList.toggle("active",siren);
 }
 
 function beep(){
- if(!siren||!audioCtx) return;
- const o=audioCtx.createOscillator();
- o.frequency.value=800;
- o.connect(audioCtx.destination);
+ if(!siren) return;
+ const o=audio.createOscillator();
+ o.frequency.value=900;
+ o.connect(audio.destination);
  o.start(); setTimeout(()=>o.stop(),120);
 }
 
-function updateThreshold(val){
- txtThresh.innerText=val;
- threshLine.style.left=val+"%";
-}
-
-slider.oninput=e=>updateThreshold(e.target.value);
-
 function loop(){
  if(video.videoWidth){
-  ctx.drawImage(video,0,0,64,48);
-  const cur=ctx.getImageData(0,0,64,48);
-  if(lastFrame){
-   let diff=0;
-   for(let i=0;i<cur.data.length;i+=32){
-    diff+=Math.abs(cur.data[i]-lastFrame.data[i]);
+   ctx.drawImage(video,0,0,64,48);
+   const f=ctx.getImageData(0,0,64,48);
+   if(last){
+     let d=0;
+     for(let i=0;i<f.data.length;i+=32)
+       d+=Math.abs(f.data[i]-last.data[i]);
+     let m=Math.min(100,d*0.03);
+     bar.style.width=m+"%";
+     mval.innerText=m.toFixed(0);
+     if(m>=slider.value && siren){
+       document.getElementById("alarm-flash").style.display="block";
+       beep();
+     }else document.getElementById("alarm-flash").style.display="none";
    }
-   let motion=Math.min(100,diff*0.025);
-   bar.style.width=motion+"%";
-   txtMotion.innerText=Math.floor(motion);
-   if(motion>=slider.value && siren){
-     flash.style.display="block"; beep();
-   } else flash.style.display="none";
-  }
-  lastFrame=cur;
+   last=f;
  }
  requestAnimationFrame(loop);
 }
 
-document.getElementById("btnFlip").onclick=flipCam;
-document.getElementById("btnSiren").onclick=toggleSiren;
+document.getElementById("flip").onclick=flip;
+document.getElementById("siren").onclick=toggleSiren;
 
-updateThreshold(slider.value);
-startCamera(); loop();
+updateLine(slider.value);
+cam(); loop();

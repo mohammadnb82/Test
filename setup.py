@@ -3,12 +3,12 @@ import shutil
 
 BASE = Path("Test/tools/cam1")
 
-HTML = """<!DOCTYPE html>
-<html lang="en">
+HTML = """<!doctype html>
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Cam1 – Motion Guard</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Cam1</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -18,25 +18,25 @@ HTML = """<!DOCTYPE html>
   <div id="alarm-flash"></div>
 </div>
 
-<canvas id="proc-canvas"></canvas>
+<canvas id="proc"></canvas>
 
-<div class="controls-card">
+<div class="panel">
 
-  <div class="graph-wrapper">
-    <div id="bar-motion" class="motion-bar"></div>
-    <div id="line-thresh" class="threshold-line"></div>
+  <div id="graph" class="graph">
+    <div id="bar" class="bar"></div>
+    <div id="line" class="line"></div>
   </div>
 
-  <div class="stats-row">
-    <span>Trigger: <b><span id="txt-thresh">40</span>%</b></span>
-    <span>Motion: <b><span id="txt-motion">0</span>%</b></span>
+  <div class="stats">
+    <span>Trigger: <b><span id="tval">40</span>%</b></span>
+    <span>Motion: <b><span id="mval">0</span>%</b></span>
   </div>
 
-  <input type="range" id="input-slider" min="0" max="100" value="40">
+  <input id="slider" type="range" min="0" max="100" value="40">
 
-  <div class="buttons-grid">
-    <button class="btn btn-grey" id="btnFlip">🔄 Flip Cam</button>
-    <button class="btn btn-red" id="btnSiren">🔔 Siren</button>
+  <div class="btns">
+    <button id="flip">🔄 Flip Cam</button>
+    <button id="siren">🔔 Siren</button>
   </div>
 
 </div>
@@ -46,118 +46,112 @@ HTML = """<!DOCTYPE html>
 </html>
 """
 
-CSS = """body{
- margin:0;padding:12px;background:#000;color:#fff;
- font-family:system-ui,-apple-system
-}
-.video-box{max-width:500px;margin:auto;position:relative;border-radius:12px;overflow:hidden}
-video{width:100%;height:auto}
-video.mirror{transform:scaleX(-1)}
+CSS = """body{margin:0;background:#000;color:#fff;font-family:system-ui}
+.video-box{max-width:500px;margin:auto;border-radius:12px;overflow:hidden;position:relative}
+video{width:100%}
 #alarm-flash{position:absolute;inset:0;background:rgba(255,0,0,.4);display:none}
-.controls-card{max-width:500px;margin:10px auto;background:#1c1c1e;padding:12px;border-radius:12px}
-.graph-wrapper{height:40px;background:#2c2c2e;border-radius:6px;position:relative;overflow:hidden}
-.motion-bar{height:100%;width:0%;background:#32d74b}
-.threshold-line{position:absolute;top:0;bottom:0;width:3px;background:red;left:40%}
-.stats-row{display:flex;justify-content:space-between;margin:6px 0;font-size:14px}
-.buttons-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
-.btn{padding:12px;border-radius:8px;border:none;font-size:15px}
-.btn-grey{background:#3a3a3c;color:#fff}
-.btn-red{background:#3a3a3c;color:#fff}
-.btn-red.active{background:#ff453a}
+.panel{max-width:500px;margin:10px auto;background:#1c1c1e;padding:12px;border-radius:12px}
+.graph{height:40px;background:#2c2c2e;border-radius:8px;position:relative;overflow:hidden}
+.bar{height:100%;width:0;background:#30d158}
+.line{position:absolute;top:0;bottom:0;width:3px;background:#ff453a;transform:translateX(0)}
+.stats{display:flex;justify-content:space-between;margin:6px 0}
+input{width:100%}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+button{padding:12px;border-radius:8px;border:none;font-size:15px}
+#siren.active{background:#ff453a;color:#fff}
 canvas{display:none}
 """
 
 JS = """const video = document.getElementById("webcam");
-const canvas = document.getElementById("proc-canvas");
+const canvas = document.getElementById("proc");
 const ctx = canvas.getContext("2d",{willReadFrequently:true});
 
-const bar = document.getElementById("bar-motion");
-const flash = document.getElementById("alarm-flash");
-const slider = document.getElementById("input-slider");
-const txtThresh = document.getElementById("txt-thresh");
-const txtMotion = document.getElementById("txt-motion");
-const threshLine = document.getElementById("line-thresh");
+const bar = document.getElementById("bar");
+const line = document.getElementById("line");
+const graph = document.getElementById("graph");
 
-let facing="environment",stream=null;
-let lastFrame=null;
-let siren=false,audioCtx=null;
+const slider = document.getElementById("slider");
+const tval = document.getElementById("tval");
+const mval = document.getElementById("mval");
+
+let last=null, stream=null, facing="environment";
+let siren=false, audio=null;
 
 canvas.width=64; canvas.height=48;
 
-async function startCamera(){
+function updateLine(v){
+  tval.innerText = v;
+  const w = graph.clientWidth;
+  const x = (v/100)*w;
+  line.style.transform = `translateX(${x}px)`;
+}
+
+slider.oninput = e => updateLine(+e.target.value);
+
+async function cam(){
  if(stream) stream.getTracks().forEach(t=>t.stop());
  stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:facing}});
  video.srcObject = stream;
  video.play();
- video.classList.toggle("mirror",facing==="user");
- lastFrame=null;
+ last=null;
 }
 
-function flipCam(){
+function flip(){
  facing = facing==="environment"?"user":"environment";
- startCamera();
+ cam();
 }
 
 function toggleSiren(){
- if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)();
- if(audioCtx.state==="suspended") audioCtx.resume();
+ if(!audio) audio = new (AudioContext||webkitAudioContext)();
+ if(audio.state==="suspended") audio.resume();
  siren=!siren;
- document.getElementById("btnSiren").classList.toggle("active",siren);
+ document.getElementById("siren").classList.toggle("active",siren);
 }
 
 function beep(){
- if(!siren||!audioCtx) return;
- const o=audioCtx.createOscillator();
- o.frequency.value=800;
- o.connect(audioCtx.destination);
+ if(!siren) return;
+ const o=audio.createOscillator();
+ o.frequency.value=900;
+ o.connect(audio.destination);
  o.start(); setTimeout(()=>o.stop(),120);
 }
 
-function updateThreshold(val){
- txtThresh.innerText=val;
- threshLine.style.left=val+"%";
-}
-
-slider.oninput=e=>updateThreshold(e.target.value);
-
 function loop(){
  if(video.videoWidth){
-  ctx.drawImage(video,0,0,64,48);
-  const cur=ctx.getImageData(0,0,64,48);
-  if(lastFrame){
-   let diff=0;
-   for(let i=0;i<cur.data.length;i+=32){
-    diff+=Math.abs(cur.data[i]-lastFrame.data[i]);
+   ctx.drawImage(video,0,0,64,48);
+   const f=ctx.getImageData(0,0,64,48);
+   if(last){
+     let d=0;
+     for(let i=0;i<f.data.length;i+=32)
+       d+=Math.abs(f.data[i]-last.data[i]);
+     let m=Math.min(100,d*0.03);
+     bar.style.width=m+"%";
+     mval.innerText=m.toFixed(0);
+     if(m>=slider.value && siren){
+       document.getElementById("alarm-flash").style.display="block";
+       beep();
+     }else document.getElementById("alarm-flash").style.display="none";
    }
-   let motion=Math.min(100,diff*0.025);
-   bar.style.width=motion+"%";
-   txtMotion.innerText=Math.floor(motion);
-   if(motion>=slider.value && siren){
-     flash.style.display="block"; beep();
-   } else flash.style.display="none";
-  }
-  lastFrame=cur;
+   last=f;
  }
  requestAnimationFrame(loop);
 }
 
-document.getElementById("btnFlip").onclick=flipCam;
-document.getElementById("btnSiren").onclick=toggleSiren;
+document.getElementById("flip").onclick=flip;
+document.getElementById("siren").onclick=toggleSiren;
 
-updateThreshold(slider.value);
-startCamera(); loop();
+updateLine(slider.value);
+cam(); loop();
 """
 
 def main():
     if BASE.exists():
         shutil.rmtree(BASE)
     BASE.mkdir(parents=True)
-
-    (BASE/"index.html").write_text(HTML,encoding="utf-8")
-    (BASE/"style.css").write_text(CSS,encoding="utf-8")
-    (BASE/"app.js").write_text(JS,encoding="utf-8")
-
-    print("✅ cam1 fixed & rebuilt successfully")
+    (BASE/"index.html").write_text(HTML,"utf8")
+    (BASE/"style.css").write_text(CSS,"utf8")
+    (BASE/"app.js").write_text(JS,"utf8")
+    print("✅ iOS‑safe cam1 rebuilt")
 
 if __name__=="__main__":
     main()
