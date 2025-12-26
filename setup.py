@@ -1,254 +1,115 @@
-from pathlib import Path
-import shutil
+import os
 
-BASE = Path("Test/tools/cam1")
+BASE_DIR = "/Test/tools/cam1"
 
-HTML = """<!DOCTYPE html>
+os.makedirs(BASE_DIR, exist_ok=True)
+
+# ---------- index.html ----------
+html = """<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Motion Detector</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <title>Motion Threshold Test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<div class="video-box">
-  <video id="webcam" autoplay playsinline muted></video>
-  <div id="alarm-flash"></div>
-</div>
+  <h2>Motion Threshold</h2>
 
-<canvas id="proc"></canvas>
-
-<div class="controls">
   <div class="graph">
-    <div id="bar" class="motion-bar"></div>
-    <div id="line" class="threshold-line"></div>
+    <div class="motion-bar"></div>
+    <div class="threshold-line" id="thresholdLine"></div>
   </div>
 
-  <div class="stats">
-    <span class="red">Trigger: <span id="txt-th">40</span>%</span>
-    <span class="green">Motion: <span id="txt-mo">0</span>%</span>
+  <div class="controls">
+    <input id="slider" type="range" min="0" max="100" value="50">
+    <div class="value">
+      Threshold: <span id="thresholdValue">50</span>
+    </div>
   </div>
 
-  <input type="range" id="slider" min="0" max="100" value="40">
-
-  <div class="buttons">
-    <button onclick="flipCam()">🔄 Flip Cam</button>
-    <button id="btn-siren" onclick="toggleSiren()">🔔 Siren</button>
-  </div>
-</div>
-
-<script src="app.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
 """
 
-CSS = """body{
-  background:#000;
-  margin:0;
-  padding:15px;
-  font-family:-apple-system,system-ui;
-  color:#fff;
+# ---------- style.css ----------
+css = """* {
+  box-sizing: border-box;
 }
 
-.video-box{
-  max-width:500px;
-  margin:auto;
-  aspect-ratio:4/3;
-  border-radius:12px;
-  overflow:hidden;
-  position:relative;
-  background:#111;
+body {
+  font-family: Arial, sans-serif;
+  padding: 20px;
 }
 
-video{width:100%;height:100%;object-fit:cover}
-
-#alarm-flash{
-  position:absolute;inset:0;
-  background:rgba(255,69,58,.45);
-  display:none;
-  z-index:10;
+.graph {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  height: 30px;
+  background: #ddd;
+  margin: 20px 0;
+  border-radius: 6px;
+  overflow: hidden;
 }
 
-.controls{
-  max-width:500px;
-  margin:15px auto;
-  background:#1c1c1e;
-  padding:15px;
-  border-radius:16px;
+.motion-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(to right, #4caf50, #4caf50);
+  opacity: 0.4;
 }
 
-.graph{
-  position:relative;
-  height:45px;
-  background:#2c2c2e;
-  border-radius:8px;
-  overflow:hidden;
+.threshold-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: red;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
 }
 
-.motion-bar{
-  height:100%;
-  width:0%;
-  background:#32d74b;
-  z-index:1;
+.controls {
+  max-width: 400px;
 }
 
-.threshold-line{
-  position:absolute;
-  top:0;bottom:0;
-  width:4px;
-  background:#ff453a;
-  left:40%;
-  transform:translateX(-50%);
-  z-index:5;
-  box-shadow:0 0 5px red;
+input[type="range"] {
+  width: 100%;
 }
-
-.stats{
-  display:flex;
-  justify-content:space-between;
-  margin:8px 0;
-  font-weight:700;
-}
-
-.red{color:#ff453a}
-.green{color:#32d74b}
-
-input{width:100%}
-
-.buttons{
-  margin-top:10px;
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px;
-}
-
-button{
-  padding:14px;
-  border:none;
-  border-radius:12px;
-  background:#3a3a3c;
-  color:#fff;
-  font-size:15px;
-}
-
-#btn-siren.active{
-  background:#ff453a;
-  animation:pulse 1s infinite;
-}
-
-@keyframes pulse{
-  0%{opacity:1}
-  50%{opacity:.8}
-  100%{opacity:1}
-}
-
-canvas{display:none}
 """
 
-JS = """const CONF={
-  w:64,h:48,diff:20,gain:5
-};
+# ---------- script.js ----------
+js = """const slider = document.getElementById("slider");
+const line = document.getElementById("thresholdLine");
+const valueText = document.getElementById("thresholdValue");
 
-const video=document.getElementById("webcam");
-const canvas=document.getElementById("proc");
-const ctx=canvas.getContext("2d",{willReadFrequently:true});
-
-const bar=document.getElementById("bar");
-const line=document.getElementById("line");
-const txtTh=document.getElementById("txt-th");
-const txtMo=document.getElementById("txt-mo");
-const slider=document.getElementById("slider");
-const flash=document.getElementById("alarm-flash");
-const btnS=document.getElementById("btn-siren");
-
-let stream=null,facing="environment";
-let last=null,siren=false,ac=null;
-
-canvas.width=CONF.w; canvas.height=CONF.h;
-
-function updateThresh(v){
-  line.style.left=v+"%";
-  txtTh.textContent=v;
+function updateThreshold(val) {
+  line.style.left = val + "%";
+  valueText.textContent = val;
 }
 
-slider.oninput=e=>updateThresh(e.target.value);
+slider.addEventListener("input", (e) => {
+  updateThreshold(e.target.value);
+});
 
-async function startCam(){
-  if(stream) stream.getTracks().forEach(t=>t.stop());
-  stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:facing}});
-  video.srcObject=stream;
-  await video.play();
-  last=null;
-}
-
-function flipCam(){
-  facing=facing==="environment"?"user":"environment";
-  startCam();
-}
-
-function toggleSiren(){
-  if(!ac) ac=new (AudioContext||webkitAudioContext)();
-  if(ac.state==="suspended") ac.resume();
-  siren=!siren;
-  btnS.classList.toggle("active",siren);
-}
-
-function beep(){
-  if(!siren||!ac||ac.state!=="running")return;
-  const o=ac.createOscillator();
-  const g=ac.createGain();
-  o.frequency.value=800;
-  g.gain.value=.3;
-  o.connect(g); g.connect(ac.destination);
-  o.start(); o.stop(ac.currentTime+.1);
-}
-
-function loop(){
-  if(video.videoWidth){
-    ctx.drawImage(video,0,0,CONF.w,CONF.h);
-    const f=ctx.getImageData(0,0,CONF.w,CONF.h);
-    if(last){
-      let c=0;
-      for(let i=0;i<f.data.length;i+=4){
-        const d=Math.abs(f.data[i]-last.data[i]);
-        if(d>CONF.diff) c++;
-      }
-      let m=Math.floor(c/(CONF.w*CONF.h)*100*CONF.gain);
-      if(m>100)m=100;
-      bar.style.width=m+"%";
-      txtMo.textContent=m;
-      const th=+slider.value;
-      if(m>=th && th>0){
-        bar.style.background="#ff453a";
-        flash.style.display="block";
-        beep();
-      }else{
-        bar.style.background="#32d74b";
-        flash.style.display="none";
-      }
-    }
-    last=f;
-  }
-  requestAnimationFrame(loop);
-}
-
-updateThresh(slider.value);
-startCam();
-loop();
+// initial state
+updateThreshold(slider.value);
 """
 
-def main():
-    if BASE.exists():
-        shutil.rmtree(BASE)
-    BASE.mkdir(parents=True)
+with open(os.path.join(BASE_DIR, "index.html"), "w", encoding="utf-8") as f:
+    f.write(html)
 
-    (BASE/"index.html").write_text(HTML,"utf8")
-    (BASE/"style.css").write_text(CSS,"utf8")
-    (BASE/"app.js").write_text(JS,"utf8")
+with open(os.path.join(BASE_DIR, "style.css"), "w", encoding="utf-8") as f:
+    f.write(css)
 
-    print("✅ cam1 rebuilt – iOS safe logic applied")
+with open(os.path.join(BASE_DIR, "script.js"), "w", encoding="utf-8") as f:
+    f.write(js)
 
-if __name__=="__main__":
-    main()
+print("✅ Base HTML rebuild complete in /Test/tools/cam1")
