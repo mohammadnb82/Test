@@ -1,9 +1,9 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>Cam1</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Motion Detector</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -15,22 +15,22 @@
 
 <canvas id="proc"></canvas>
 
-<div class="panel">
-  <div id="graph" class="graph">
-    <div id="bar" class="bar"></div>
-    <div id="line" class="line"></div>
+<div class="controls">
+  <div class="graph">
+    <div id="bar" class="motion-bar"></div>
+    <div id="line" class="threshold-line"></div>
   </div>
 
   <div class="stats">
-    <span>Trigger: <b><span id="tval">40</span>%</b></span>
-    <span>Motion: <b><span id="mval">0</span>%</b></span>
+    <span class="red">Trigger: <span id="txt-th">40</span>%</span>
+    <span class="green">Motion: <span id="txt-mo">0</span>%</span>
   </div>
 
-  <input id="slider" type="range" min="0" max="100" value="40">
+  <input type="range" id="slider" min="0" max="100" value="40">
 
-  <div class="btns">
-    <button id="flip">🔄 Flip Cam</button>
-    <button id="siren">🔔 Siren</button>
+  <div class="buttons">
+    <button onclick="flipCam()">🔄 Flip Cam</button>
+    <button id="btn-siren" onclick="toggleSiren()">🔔 Siren</button>
   </div>
 </div>
 
