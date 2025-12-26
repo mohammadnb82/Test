@@ -1,41 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Cam1 – Motion Guard</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <title>Motion Threshold Test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<div class="video-box">
-  <video id="webcam" autoplay playsinline muted></video>
-  <div id="alarm-flash"></div>
-</div>
+  <h2>Motion Threshold</h2>
 
-<canvas id="proc-canvas"></canvas>
-
-<div class="controls-card">
-
-  <div class="graph-wrapper">
-    <div id="bar-motion" class="motion-bar"></div>
-    <div id="line-thresh" class="threshold-line"></div>
+  <div class="graph">
+    <div class="motion-bar"></div>
+    <div class="threshold-line" id="thresholdLine"></div>
   </div>
 
-  <div class="stats-row">
-    <span class="stat-left">Trigger: <span id="txt-thresh">40</span>%</span>
-    <span class="stat-right">Motion: <span id="txt-motion">0</span>%</span>
+  <div class="controls">
+    <input id="slider" type="range" min="0" max="100" value="50">
+    <div class="value">
+      Threshold: <span id="thresholdValue">50</span>
+    </div>
   </div>
 
-  <input type="range" id="input-slider" min="0" max="100" value="40">
-
-  <div class="buttons-grid">
-    <button class="btn btn-grey" id="btnFlip">🔄 Flip Cam</button>
-    <button class="btn btn-red" id="btnSiren">🔔 Siren</button>
-  </div>
-
-</div>
-
-<script src="app.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
