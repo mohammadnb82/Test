@@ -1,6 +1,10 @@
 import os
 
-BASE_DIR = "/Test/tools/cam1"
+BASE_DIR = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "tools",
+    "cam1"
+)
 
 os.makedirs(BASE_DIR, exist_ok=True)
 
@@ -61,7 +65,7 @@ body {
   left: 0;
   height: 100%;
   width: 100%;
-  background: linear-gradient(to right, #4caf50, #4caf50);
+  background: #4caf50;
   opacity: 0.4;
 }
 
@@ -95,11 +99,10 @@ function updateThreshold(val) {
   valueText.textContent = val;
 }
 
-slider.addEventListener("input", (e) => {
+slider.addEventListener("input", e => {
   updateThreshold(e.target.value);
 });
 
-// initial state
 updateThreshold(slider.value);
 """
 
@@ -112,4 +115,4 @@ with open(os.path.join(BASE_DIR, "style.css"), "w", encoding="utf-8") as f:
 with open(os.path.join(BASE_DIR, "script.js"), "w", encoding="utf-8") as f:
     f.write(js)
 
-print("✅ Base HTML rebuild complete in /Test/tools/cam1")
+print("✅ Base HTML rebuild complete at tools/cam1")
